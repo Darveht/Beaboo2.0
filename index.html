@@ -4876,9 +4876,13 @@ function openPhotoDetail(photo) {
 
   // FUNCIONES DEL CREATOR HUB
   function openCreatorHub() {
-    document.getElementById('creator-hub-view').classList.remove('hidden');
-    mainApp.classList.add('hidden');
-    loadCreatorStats();
+    showLoader();
+    setTimeout(() => {
+      document.getElementById('creator-hub-view').classList.remove('hidden');
+      mainApp.classList.add('hidden');
+      loadCreatorStats();
+      hideLoader();
+    }, 300);
   }
 
   function closeCreatorHub() {
@@ -4910,9 +4914,13 @@ function openPhotoDetail(photo) {
 
   // 社区功能
   function openCommunity() {
-    document.getElementById('community-view').classList.remove('hidden');
-    mainApp.classList.add('hidden');
-    loadNotes();
+    showLoader();
+    setTimeout(() => {
+      document.getElementById('community-view').classList.remove('hidden');
+      mainApp.classList.add('hidden');
+      loadNotes();
+      hideLoader();
+    }, 300);
   }
 
   function closeCommunity() {
@@ -5792,58 +5800,65 @@ function saveNote() {
 }
 
   function openNotifications() {
-    if (document.documentElement.requestFullscreen) {
-      document.documentElement.requestFullscreen();
-    }
-    const currentUser = firebase.auth().currentUser;
-    if (!currentUser) return;
-    
-    // Request notification permission if not granted
-    if (Notification.permission !== "granted") {
-      Notification.requestPermission();
-    }
-    
-    document.getElementById('notifications-modal').classList.remove('hidden');
-    const notificationsRef = firebase.database().ref('notifications/' + currentUser.uid);
-    notificationsRef.on('value', snapshot => {
-      const notificationsList = document.getElementById('notifications-list');
-      notificationsList.innerHTML = "";
-      snapshot.forEach(child => {
-        const notification = child.val();
-        const div = document.createElement('div');
-        div.className = `notification-item ${notification.type || 'info'}`;
-        
-        // Icon based on notification type
-        const iconMap = {
-          follow: 'user-plus',
-          like: 'heart',
-          comment: 'comment',
-          info: 'info-circle'
-        };
-        
-        div.innerHTML = `
-          <div class="flex items-center gap-2">
-            <i class="fas fa-${iconMap[notification.type || 'info']} ${notification.type}-icon"></i>
-            <div class="flex-1">
-              <div class="notification-message">${notification.message}</div>
-              <div class="notification-time">${new Date(notification.timestamp).toLocaleString()}</div>
+    showLoader();
+    setTimeout(() => {
+      if (document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen();
+      }
+      const currentUser = firebase.auth().currentUser;
+      if (!currentUser) {
+        hideLoader();
+        return;
+      }
+      
+      // Request notification permission if not granted
+      if (Notification.permission !== "granted") {
+        Notification.requestPermission();
+      }
+      
+      document.getElementById('notifications-modal').classList.remove('hidden');
+      const notificationsRef = firebase.database().ref('notifications/' + currentUser.uid);
+      notificationsRef.on('value', snapshot => {
+        const notificationsList = document.getElementById('notifications-list');
+        notificationsList.innerHTML = "";
+        snapshot.forEach(child => {
+          const notification = child.val();
+          const div = document.createElement('div');
+          div.className = `notification-item ${notification.type || 'info'}`;
+          
+          // Icon based on notification type
+          const iconMap = {
+            follow: 'user-plus',
+            like: 'heart',
+            comment: 'comment',
+            info: 'info-circle'
+          };
+          
+          div.innerHTML = `
+            <div class="flex items-center gap-2">
+              <i class="fas fa-${iconMap[notification.type || 'info']} ${notification.type}-icon"></i>
+              <div class="flex-1">
+                <div class="notification-message">${notification.message}</div>
+                <div class="notification-time">${new Date(notification.timestamp).toLocaleString()}</div>
+              </div>
+              ${!notification.read ? '<span class="unread-dot"></span>' : ''}
             </div>
-            ${!notification.read ? '<span class="unread-dot"></span>' : ''}
-          </div>
-        `;
-        
-        // Mark as read when clicked
-        div.onclick = () => {
-          if (!notification.read) {
-            firebase.database().ref('notifications/' + currentUser.uid + '/' + child.key).update({
-              read: true
-            });
-          }
-        };
-        
-        notificationsList.appendChild(div);
+          `;
+          
+          // Mark as read when clicked
+          div.onclick = () => {
+            if (!notification.read) {
+              firebase.database().ref('notifications/' + currentUser.uid + '/' + child.key).update({
+                read: true
+              });
+            }
+          };
+          
+          notificationsList.appendChild(div);
+        });
+        hideLoader();
       });
-    });
+    }, 300);
   }
 
   function closeNotifications() {
@@ -6285,22 +6300,34 @@ function saveNote() {
   }
 
   function openProfile() {
-    mainApp.classList.add('hidden');
-    document.getElementById('profile-view').classList.remove('hidden');
+    showLoader();
+    setTimeout(() => {
+      mainApp.classList.add('hidden');
+      document.getElementById('profile-view').classList.remove('hidden');
+      hideLoader();
+    }, 300);
   }
 
   function openHome() {
-    document.getElementById('profile-view').classList.add('hidden');
-    mainApp.classList.remove('hidden');
+    showLoader();
+    setTimeout(() => {
+      document.getElementById('profile-view').classList.add('hidden');
+      mainApp.classList.remove('hidden');
+      hideLoader();
+    }, 300);
   }
 
   function openSearch() {
-    mainApp.classList.add('hidden');
-    document.getElementById('search-view').classList.remove('hidden');
-    document.getElementById('search-loading').style.display = "flex";
+    showLoader();
     setTimeout(() => {
-      document.getElementById('search-loading').style.display = "none";
-    }, 4000);
+      mainApp.classList.add('hidden');
+      document.getElementById('search-view').classList.remove('hidden');
+      document.getElementById('search-loading').style.display = "flex";
+      setTimeout(() => {
+        document.getElementById('search-loading').style.display = "none";
+        hideLoader();
+      }, 1000);
+    }, 300);
   }
 
   function closeSearch() {
@@ -8474,12 +8501,16 @@ document.getElementById('category-filter').addEventListener('change', performRea
   let voiceRecordingActive = false;
 
   function openMessages() {
-    document.getElementById('main-app').classList.add('hidden');
-    document.getElementById('chat-view').classList.remove('hidden');
-    showConversationsView();
-    loadConversations();
-    listenForUnreadMessages();
-    loadCurrentUserInfo();
+    showLoader();
+    setTimeout(() => {
+      document.getElementById('main-app').classList.add('hidden');
+      document.getElementById('chat-view').classList.remove('hidden');
+      showConversationsView();
+      loadConversations();
+      listenForUnreadMessages();
+      loadCurrentUserInfo();
+      hideLoader();
+    }, 300);
   }
 
   function closeChat() {
@@ -10305,6 +10336,88 @@ function closeBeabooStudio() {
         </form>
     </div>
 </div>
+
+<!-- Global Loading Spinner -->
+<div id="global-loader" class="fixed inset-0 bg-black bg-opacity-50 z-[9999] hidden items-center justify-center">
+  <div class="loader"></div>
+</div>
+
+<style>
+.loader {
+  border: 4px solid rgba(254, 44, 85, 0.1);
+  border-radius: 50%;
+  border-top: 4px solid #FE2C55;
+  width: 50px;
+  height: 50px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+</style>
+
+<script>
+// Global loading spinner functions
+function showLoader() {
+  const loader = document.getElementById('global-loader');
+  if (loader) {
+    loader.style.display = 'flex';
+  }
+}
+
+function hideLoader() {
+  const loader = document.getElementById('global-loader');
+  if (loader) {
+    loader.style.display = 'none';
+  }
+}
+
+// Automatic Firebase to S3 migration on first load
+async function autoMigrateFirebaseData() {
+  const migrationKey = 'firebase_s3_migration_completed';
+  const migrationCompleted = localStorage.getItem(migrationKey);
+  
+  if (migrationCompleted === 'true') {
+    console.log('Migration already completed');
+    return;
+  }
+
+  try {
+    console.log('Starting automatic Firebase to S3 migration...');
+    showLoader();
+    
+    const response = await fetch('/.netlify/functions/migrate-firebase-to-s3', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ deleteFromFirebase: false })
+    });
+
+    const result = await response.json();
+    
+    if (response.ok && result.success) {
+      console.log(`Migration successful: ${result.migrated} stories migrated`);
+      localStorage.setItem(migrationKey, 'true');
+    } else {
+      console.warn('Migration had issues:', result);
+    }
+  } catch (error) {
+    console.error('Auto-migration error:', error);
+  } finally {
+    hideLoader();
+  }
+}
+
+// Run migration on authenticated user
+firebase.auth().onAuthStateChanged(user => {
+  if (user) {
+    autoMigrateFirebaseData();
+  }
+});
+</script>
 
 <script src="stories.js"></script>
 </body>
