@@ -1,0 +1,101 @@
+The Netlify deploy errored, with the following guidance provided:
+
+- Relevant log lines
+  - [line 72](#L72)–[line 76](#L76) show the failure message and file involved.
+  - [line 75](#L75) points to the function file: netlify/functions/send-support-email.js
+  - [line 76](#L76) is the actual error: Cannot find module 'firebase-admin'
+
+Diagnosis
+- Netlify's functions bundler (zip-it-and-ship-it) failed because the function netlify/functions/send-support-email.js requires the npm package firebase-admin but that package is not present in the site's top-level package.json (or is not installed). See [line 76](#L76).
+
+Cause
+- A Netlify Function imports 'firebase-admin', but that dependency is missing from the repository's top-level package.json (or was not committed), so Netlify cannot install or bundle it for deployment.
+
+Solution
+1. Verify package.json is present at the repo root and is committed
+   - Open the repo's root package.json in your repo (example URL): https://github.com/Darveht/beaboo2.0/blob/main/package.json
+   - If it is missing, create one at the repository root and commit it.
+
+2. Add firebase-admin to dependencies and commit
+   - Run locally in the repo root:
+```bash
+# using npm
+npm install firebase-admin --save
+
+# or using yarn
+yarn add firebase-admin
+
+# or using pnpm
+pnpm add firebase-admin
+```
+   - Commit and push package.json and lockfile (package-lock.json / yarn.lock / pnpm-lock.yaml).
+
+3. Confirm the function import is server-side only
+   - Ensure send-support-email.js lives in netlify/functions and imports firebase-admin only in that function (not from client-side code). Netlify requires server-only dependencies to be installed at the site root so they can be bundled for functions.
+
+4. Redeploy on Netlify
+   - Push your changes and trigger a new deploy. Netlify will install dependencies from the top-level package.json and should be able to bundle the function.
+
+Optional troubleshooting (only if adding dependency doesn't fix it)
+- If firebase-admin is present in package.json but Netlify still can't find it:
+  - Ensure package.json and lockfile were actually committed to the branch Netlify is building.
+  - If you use a monorepo or package.json is not at repo root, move or replicate the dependency declaration to the top-level package.json (Netlify's functions bundler needs top-level dependencies).
+  - If you intentionally want to keep the dependency out of the top-level package.json (uncommon), you can configure your build to install dependencies for functions, but the simplest fix is to list firebase-admin in the root package.json.
+
+Notes
+- The error is unrelated to Node version. If you do need to change Node versions in Netlify later, see: https://docs.netlify.com/configure-builds/manage-dependencies/#node-js-and-javascript
+
+The relevant error logs are:
+
+Line 0: build-image version: 7aa2b696d8640ee8ab8ada4b1f870982d7bd596d (noble)
+Line 1: buildbot version: 11482adeb7bc8b39b970c0c529cdaed99bb59394
+Line 2: Fetching cached dependencies
+Line 3: Failed to fetch cache, continuing with build
+Line 4: Starting to prepare the repo for build
+Line 5: No cached dependencies found. Cloning fresh repo
+Line 6: git clone --filter=blob:none https://github.com/Darveht/beaboo2.0
+Line 7: Preparing Git Reference refs/heads/main
+Line 8: Starting to install dependencies
+Line 9: Downloading and installing node v18.20.8...
+Line 10: Downloading https://nodejs.org/dist/v18.20.8/node-v18.20.8-linux-x64.tar.xz...
+Line 11: Computing checksum with sha256sum
+Line 12: Checksums matched!
+Line 13: Now using node v18.20.8 (npm v10.8.2)
+Line 59:  - get-notes.js
+Line 60:  - like-note.js
+Line 61:  - manage-following.js
+Line 62:  - send-support-email.js
+Line 63:  - upload-chapter.js
+Line 64:  - upload-image.js
+Line 65:  - upload-note.js
+Line 66:  - upload-story.js
+Line 67: ​
+Line 68: [91m[1m​[22m[39m
+Line 69: [91m[1mDependencies installation error                               [22m[39m
+Line 70: [91m[1m────────────────────────────────────────────────────────────────[22m[39m
+Line 71: ​
+Line 72:   [31m[1mError message[22m[39m
+Line 73:   A Netlify Function failed to require one of its dependencies.
+Line 74:   Please make sure it is present in the site's top-level "package.json".
+​
+Line 75:   In file "/opt/build/repo/netlify/functions/send-support-email.js"
+Line 76:   Cannot find module 'firebase-admin'
+Line 77:   Require stack:
+Line 78:   - /opt/buildhome/node-deps/node_modules/@netlify/zip-it-and-ship-it/dist/runtimes/node/bundlers/zisi/resolve.js
+Line 79: ​
+Line 80:   [31m[1mResolved config[22m[39m
+Line 81:   build:
+Line 82:     environment:
+Line 83:       - NODE_VERSION
+Line 84:     publish: /opt/build/repo
+Line 85:     publishOrigin: config
+Line 86:   functionsDirectory: /opt/build/repo/netlify/functions
+Line 87:   redirects:
+Line 88: Failed during stage 'building site': Build script returned non-zero exit code: 2
+Line 89:     - from: /*
+      status: 200
+      to: /index.html
+  redirectsOrigin: config
+Line 90: Build failed due to a user error: Build script returned non-zero exit code: 2
+Line 91: Failing build: Failed to build site
+Line 92: Finished processing build request in 11.203s
