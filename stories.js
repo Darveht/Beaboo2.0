@@ -20,7 +20,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const auth = firebase.auth();
     const database = firebase.database();
-    const storage = firebase.storage();
 
     const storiesContainer = document.getElementById('stories');
     const storyViewer = document.getElementById('story-viewer');
@@ -154,70 +153,80 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const userId = currentUser.uid;
         const timestamp = Date.now();
-        const storageRef = storage.ref(`stories/${userId}/${timestamp}_${file.name}`);
-        const uploadTask = storageRef.put(file);
 
-        uploadTask.on('state_changed', 
-            (snapshot) => {
-                const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                progressBar.style.width = progress + '%';
-                progressText.textContent = `Subiendo: ${Math.round(progress)}%`;
-            }, 
-            (error) => {
-                console.error("Error al subir:", error);
-                alert('Error al subir la imagen. Por favor intenta de nuevo. Error: ' + error.message);
+        progressText.textContent = 'Procesando...';
+        progressBar.style.width = '50%';
+        
+        const reader = new FileReader();
+        reader.onload = async function(e) {
+            try {
+                const base64Image = e.target.result;
+                
+                progressText.textContent = 'Subiendo a AWS S3...';
+                progressBar.style.width = '70%';
+                
+                const response = await fetch('/.netlify/functions/upload-image', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        imageData: base64Image,
+                        fileName: file.name,
+                        userId: userId,
+                        timestamp: timestamp,
+                        contentType: file.type
+                    })
+                });
+
+                const result = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(result.error || 'Error al subir imagen');
+                }
+                
+                progressBar.style.width = '90%';
+                progressText.textContent = 'Guardando en base de datos...';
+                
+                const storyData = {
+                    imageUrl: result.imageUrl,
+                    timestamp: timestamp,
+                    views: 0,
+                    userId: userId
+                };
+                
+                await database.ref(`stories/${userId}`).push(storyData);
+                
+                progressBar.style.width = '100%';
+                progressText.textContent = '¡Historia subida!';
+                
+                setTimeout(() => {
+                    storyUploadModal.classList.remove('active');
+                    resetUploadForm();
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Subir Historia';
+                    loadStories();
+                }, 500);
+            } catch (error) {
+                console.error("Error al subir historia:", error);
+                alert('Error al subir la historia. Por favor intenta de nuevo. Error: ' + error.message);
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'Subir Historia';
                 progressDiv.style.display = 'none';
                 progressBar.style.width = '0%';
-            }, 
-            () => {
-                progressText.textContent = 'Procesando...';
-                
-                // Convertir la imagen a base64
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const base64Image = e.target.result;
-                    
-                    // Guardar en Realtime Database con base64
-                    const storyData = {
-                        imageUrl: base64Image,
-                        timestamp: Date.now(),
-                        views: 0,
-                        userId: userId
-                    };
-                    
-                    database.ref(`stories/${userId}`).push(storyData)
-                        .then(() => {
-                            progressText.textContent = '¡Historia subida!';
-                            setTimeout(() => {
-                                storyUploadModal.classList.remove('active');
-                                resetUploadForm();
-                                submitBtn.disabled = false;
-                                submitBtn.textContent = 'Subir Historia';
-                                loadStories();
-                            }, 500);
-                        })
-                        .catch((error) => {
-                            console.error("Error al guardar en la base de datos:", error);
-                            alert('Error al guardar la historia. Por favor intenta de nuevo. Error: ' + error.message);
-                            submitBtn.disabled = false;
-                            submitBtn.textContent = 'Subir Historia';
-                            progressDiv.style.display = 'none';
-                            progressBar.style.width = '0%';
-                        });
-                };
-                
-                reader.onerror = (error) => {
-                    console.error("Error al convertir imagen:", error);
-                    alert('Error al procesar la imagen');
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = 'Subir Historia';
-                };
-                
-                reader.readAsDataURL(file);
             }
-        );
+        };
+        
+        reader.onerror = (error) => {
+            console.error("Error al leer imagen:", error);
+            alert('Error al procesar la imagen');
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Subir Historia';
+            progressDiv.style.display = 'none';
+            progressBar.style.width = '0%';
+        };
+        
+        reader.readAsDataURL(file);
     }
 
     function openStoryViewer(userId) {
@@ -305,25 +314,26 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function deleteStory(userId, storyKey, imageUrl) {
-        // 1. Delete from Realtime Database
-        database.ref(`stories/${userId}/${storyKey}`).remove()
-            .then(() => {
-                // 2. Delete from Storage
-                const imageRef = storage.refFromURL(imageUrl);
-                imageRef.delete().then(() => {
-                    closeStoryViewer();
-                    loadStories(); // Refresh stories
-                }).catch((error) => {
-                    console.error("Error deleting from Storage:", error);
-                    // Even if storage deletion fails, the story is gone from the DB.
-                    closeStoryViewer();
-                    loadStories();
+    async function deleteStory(userId, storyKey, imageUrl) {
+        try {
+            await database.ref(`stories/${userId}/${storyKey}`).remove();
+            
+            if (imageUrl && imageUrl.includes('amazonaws.com')) {
+                await fetch('/.netlify/functions/delete-image', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ imageUrl })
                 });
-            })
-            .catch((error) => {
-                console.error("Error deleting from Database:", error);
-            });
+            }
+            
+            closeStoryViewer();
+            loadStories();
+        } catch (error) {
+            console.error("Error deleting story:", error);
+            alert('Error al eliminar la historia');
+        }
     }
 
     function closeStoryViewer() {
