@@ -31,7 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
         storyUploadModal.classList.add('active');
     });
 
-    document.getElementById('story-upload-close').addEventListener('click', () => {
+    document.getElementById('story-upload-back').addEventListener('click', () => {
         storyUploadModal.classList.remove('active');
         resetUploadForm();
     });
@@ -153,7 +153,8 @@ document.addEventListener('DOMContentLoaded', () => {
         progressDiv.style.display = 'block';
 
         const userId = currentUser.uid;
-        const storageRef = storage.ref(`stories/${userId}/${Date.now()}_${file.name}`);
+        const timestamp = Date.now();
+        const storageRef = storage.ref(`stories/${userId}/${timestamp}_${file.name}`);
         const uploadTask = storageRef.put(file);
 
         uploadTask.on('state_changed', 
@@ -164,26 +165,41 @@ document.addEventListener('DOMContentLoaded', () => {
             }, 
             (error) => {
                 console.error("Error al subir:", error);
-                alert('Error al subir la imagen. Por favor intenta de nuevo.');
+                alert('Error al subir la imagen. Por favor intenta de nuevo. Error: ' + error.message);
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'Subir Historia';
                 progressDiv.style.display = 'none';
+                progressBar.style.width = '0%';
             }, 
             () => {
-                uploadTask.snapshot.ref.getDownloadURL().then((downloadURL) => {
-                    const storyData = {
-                        imageUrl: downloadURL,
-                        timestamp: firebase.database.ServerValue.TIMESTAMP,
-                        views: 0
-                    };
-                    database.ref(`stories/${userId}`).push(storyData).then(() => {
-                        storyUploadModal.classList.remove('active');
-                        resetUploadForm();
+                progressText.textContent = 'Procesando...';
+                uploadTask.snapshot.ref.getDownloadURL()
+                    .then((downloadURL) => {
+                        const storyData = {
+                            imageUrl: downloadURL,
+                            timestamp: firebase.database.ServerValue.TIMESTAMP,
+                            views: 0
+                        };
+                        return database.ref(`stories/${userId}`).push(storyData);
+                    })
+                    .then(() => {
+                        progressText.textContent = '¡Historia subida!';
+                        setTimeout(() => {
+                            storyUploadModal.classList.remove('active');
+                            resetUploadForm();
+                            submitBtn.disabled = false;
+                            submitBtn.textContent = 'Subir Historia';
+                            loadStories();
+                        }, 500);
+                    })
+                    .catch((error) => {
+                        console.error("Error al guardar en la base de datos:", error);
+                        alert('Error al guardar la historia. Por favor intenta de nuevo. Error: ' + error.message);
                         submitBtn.disabled = false;
                         submitBtn.textContent = 'Subir Historia';
-                        loadStories();
+                        progressDiv.style.display = 'none';
+                        progressBar.style.width = '0%';
                     });
-                });
             }
         );
     }
