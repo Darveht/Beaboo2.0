@@ -41,7 +41,9 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('story-viewer-close').addEventListener('click', closeStoryViewer);
 
     // Load stories automatically on page load
-    loadStories();
+    setTimeout(() => {
+        loadStories();
+    }, 500);
     
     // Reload stories every 30 seconds to show new stories from other users
     setInterval(() => {
@@ -83,12 +85,13 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadStories() {
         const currentUser = auth.currentUser;
         if (!currentUser) {
-            storiesContainer.innerHTML = '';
+            // Intentar de nuevo en 1 segundo si el usuario no está autenticado aún
+            setTimeout(loadStories, 1000);
             return;
         }
 
         try {
-            // Obtener historias de AWS S3
+            // Obtener historias
             const response = await fetch('/.netlify/functions/get-stories', {
                 method: 'GET',
             });
@@ -205,10 +208,10 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const base64Image = e.target.result;
                 
-                progressText.textContent = 'Subiendo a AWS S3...';
+                progressText.textContent = 'Subiendo...';
                 progressBar.style.width = '70%';
                 
-                // Subir historia completa a AWS S3
+                // Subir historia completa
                 const response = await fetch('/.netlify/functions/upload-story', {
                     method: 'POST',
                     headers: {

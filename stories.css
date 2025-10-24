@@ -10,7 +10,7 @@
 .stories {
     display: flex;
     flex-direction: row;
-    gap: 12px;
+    gap: 16px;
     overflow-x: auto;
     overflow-y: hidden;
     scroll-behavior: smooth;
@@ -159,7 +159,7 @@
 
 .story-top-controls {
     position: absolute;
-    top: 16px;
+    top: 50px;
     right: 16px;
     display: flex;
     align-items: center;
