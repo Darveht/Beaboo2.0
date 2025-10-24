@@ -1,14 +1,12 @@
-const admin = require('firebase-admin');
+const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 
-// Inicializar Firebase Admin si no está inicializado
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.applicationDefault(),
-    databaseURL: process.env.FIREBASE_DATABASE_URL || "https://beaboo-default-rtdb.firebaseio.com"
-  });
-}
-
-const db = admin.database();
+const s3Client = new S3Client({
+  region: process.env.MY_AWS_REGION || 'us-east-2',
+  credentials: {
+    accessKeyId: process.env.MY_AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.MY_AWS_SECRET_ACCESS_KEY,
+  },
+});
 
 exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') {
@@ -28,7 +26,6 @@ exports.handler = async (event) => {
       };
     }
 
-    // Guardar la solicitud en Firebase
     const supportRequest = {
       email,
       problemType,
@@ -38,7 +35,17 @@ exports.handler = async (event) => {
       status: 'pending'
     };
 
-    await db.ref('support-requests').push(supportRequest);
+    const requestId = `support_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const supportKey = `support-requests/${requestId}.json`;
+
+    const command = new PutObjectCommand({
+      Bucket: process.env.MY_AWS_S3_BUCKET_NAME || 'libros-de-glam-2025',
+      Key: supportKey,
+      Body: JSON.stringify(supportRequest),
+      ContentType: 'application/json',
+    });
+
+    await s3Client.send(command);
 
     return {
       statusCode: 200,
