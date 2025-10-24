@@ -133,7 +133,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (userStories.length > 0) {
                         const latestStory = userStories[0];
                         const storyElement = createStoryElement(latestStory, userId);
-                        storiesContainer.appendChild(storyElement);
+                        if (storyElement) {
+                            storiesContainer.appendChild(storyElement);
+                        }
                     }
                 }
             }
@@ -146,8 +148,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const storyDiv = document.createElement('div');
         storyDiv.className = 'story';
         
-        // Usar username, nunca email
-        const displayName = storyData.username || storyData.email?.split('@')[0] || 'Usuario';
+        // Usar username, nunca email, y saltar si es anónimo
+        let displayName = storyData.username || storyData.email?.split('@')[0] || '';
+        
+        // No mostrar historias anónimas
+        if (!displayName || displayName.toLowerCase() === 'anónimo' || displayName.toLowerCase() === 'anonimo') {
+            return null;
+        }
         
         storyDiv.innerHTML = `
             <div class="image-container">
@@ -312,17 +319,18 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
                         <div class="story-user-info">
                             <span class="username">${displayName}</span>
-                            ${currentUser && currentUser.uid === userId ? `
-                                <div class="story-options" data-story-id="${story.id}">
-                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
-                                        <circle cx="12" cy="5" r="2"/>
-                                        <circle cx="12" cy="12" r="2"/>
-                                        <circle cx="12" cy="19" r="2"/>
-                                    </svg>
-                                </div>
-                            ` : ''}
                         </div>
                     </div>
+                    <button class="story-close">×</button>
+                    ${currentUser && currentUser.uid === userId ? `
+                        <div class="story-options" data-story-id="${story.id}">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+                                <circle cx="12" cy="5" r="2"/>
+                                <circle cx="12" cy="12" r="2"/>
+                                <circle cx="12" cy="19" r="2"/>
+                            </svg>
+                        </div>
+                    ` : ''}
                     <img src="${story.coverImage}" class="story-image">
                     <div class="story-footer">
                         <div class="story-views">${story.views || 0} vistas</div>
@@ -334,6 +342,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     progressBar.style.width = '100%';
                 }, 100);
 
+                // Event listener para el botón de cerrar
+                const closeButton = storyContent.querySelector('.story-close');
+                if (closeButton) {
+                    closeButton.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        closeStoryViewer();
+                    });
+                }
+
                 // Agregar event listener para opciones
                 const optionsButton = storyContent.querySelector('.story-options');
                 if (optionsButton) {
@@ -341,40 +358,52 @@ document.addEventListener('DOMContentLoaded', () => {
                         e.stopPropagation();
                         const storyIdToDelete = e.currentTarget.dataset.storyId;
                         
-                        // Crear menú de opciones
+                        // Crear menú de opciones desde abajo
                         const existingMenu = document.querySelector('.story-options-menu');
                         if (existingMenu) {
-                            existingMenu.remove();
+                            existingMenu.classList.remove('active');
+                            setTimeout(() => existingMenu.remove(), 300);
                         }
                         
                         const menu = document.createElement('div');
                         menu.className = 'story-options-menu';
                         menu.innerHTML = `
                             <button class="delete-option">
-                                <i class="fas fa-trash"></i> Eliminar historia
+                                <i class="fas fa-trash-alt"></i>
+                                <span>Eliminar historia</span>
                             </button>
                         `;
                         
-                        const header = storyContent.querySelector('.story-header');
-                        header.appendChild(menu);
+                        document.body.appendChild(menu);
+                        setTimeout(() => menu.classList.add('active'), 10);
                         
                         // Event listener para eliminar
                         menu.querySelector('.delete-option').addEventListener('click', async (e) => {
                             e.stopPropagation();
-                            if (confirm("¿Estás seguro de que quieres eliminar esta historia?")) {
-                                menu.remove();
-                                await deleteStory(storyIdToDelete);
-                            }
+                            menu.classList.remove('active');
+                            setTimeout(() => menu.remove(), 300);
+                            
+                            // Mostrar animación de carga
+                            const loadingDiv = document.createElement('div');
+                            loadingDiv.className = 'delete-loading';
+                            loadingDiv.innerHTML = '<div class="spinner"></div>';
+                            document.body.appendChild(loadingDiv);
+                            
+                            await deleteStory(storyIdToDelete);
+                            
+                            loadingDiv.remove();
                         });
                         
                         // Cerrar menú al hacer click fuera
                         setTimeout(() => {
-                            document.addEventListener('click', function closeMenu(e) {
-                                if (!menu.contains(e.target)) {
-                                    menu.remove();
-                                    document.removeEventListener('click', closeMenu);
+                            const closeMenuOnClick = (e) => {
+                                if (!menu.contains(e.target) && !e.target.closest('.story-options')) {
+                                    menu.classList.remove('active');
+                                    setTimeout(() => menu.remove(), 300);
+                                    document.removeEventListener('click', closeMenuOnClick);
                                 }
-                            });
+                            };
+                            document.addEventListener('click', closeMenuOnClick);
                         }, 100);
                     });
                 }

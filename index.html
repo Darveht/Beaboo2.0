@@ -1880,25 +1880,16 @@ setInterval(checkScheduledChapters, 60000);
     </div>
   </div>
 
-  <div class="flex-1 overflow-y-auto pb-20 p-6" id="scrollable-content">
-    <div class="text-center mb-6">
-      <p id="tagline" class="mt-2 text-lg text-gray-700">Your gateway to unforgettable stories</p>
-    </div>
-
-    
-
-    <!-- SECCIONES DE CONTENIDO -->
+  <div class="flex-1 overflow-y-auto pb-20" id="scrollable-content">
     <!-- Carrusel de historias de autores seguidos -->
-<section id="stories-carousel" class="mb-6 overflow-x-auto">
-  <div class="flex space-x-4 p-2">
+<section id="stories-carousel" class="overflow-x-auto" style="margin-top: 0; padding-top: 8px;">
+  <div class="flex space-x-4 px-4">
     <div id="following-stories" class="flex space-x-4"></div>
   </div>
 </section>
 
-
-
 <!-- Historias -->
-    <section class="stories-container">
+    <section class="stories-container" style="margin-top: 0;">
         <div class="stories">
             <div class="story add-story" id="add-story-btn">
                 <div class="image-container">
@@ -1911,6 +1902,9 @@ setInterval(checkScheduledChapters, 60000);
             </div>
         </div>
     </section>
+    
+    <!-- SECCIONES DE CONTENIDO -->
+    <div class="p-6" style="padding-top: 0;">
 
 <section id="new-releases-section" class="mb-10">
       <div class="flex justify-between items-center mb-4">
@@ -2051,6 +2045,7 @@ firebase.auth().onAuthStateChanged(user => {
       </div>
       <div id="featured-authors" class="flex space-x-auto overflow-x-auto"></div>
     </section>
+    </div>
   </div>
 
   <!-- BOTTOM NAVIGATION TIKTOK STYLE -->
