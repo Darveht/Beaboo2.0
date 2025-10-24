@@ -51,36 +51,53 @@ console.log('%cEste sitio está protegido contra inspección de código.', 'font
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Font Awesome CDN -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-pap6t+K2bD6xIxQqkQ3sM8e+RXw7C3DyrgXV++o2aL/88+/9kS/l+SmpD8zZR1oN40Nq3QfT7HigDYfFW1zZAQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-  <!-- Google Translate (Completamente invisible y automático) -->
+  <!-- Sistema de Traducción Automática -->
   <script type="text/javascript">
+    // Detectar idioma del navegador automáticamente
+    (function() {
+      const userLang = (navigator.language || navigator.userLanguage).split('-')[0];
+      const defaultLang = 'en'; // Idioma por defecto en inglés
+      
+      // Si el idioma detectado no es español, aplicar traducción
+      if (userLang !== 'es' && userLang !== defaultLang) {
+        console.log('Idioma detectado:', userLang);
+        // Guardamos el idioma preferido
+        localStorage.setItem('preferredLanguage', userLang);
+      } else if (userLang === 'es') {
+        localStorage.setItem('preferredLanguage', 'es');
+      }
+    })();
+    
     function googleTranslateElementInit() {
       new google.translate.TranslateElement({
-        pageLanguage: 'es',
+        pageLanguage: 'en',
         includedLanguages: 'en,es,pt,fr,de,it,ja,ko,zh-CN,zh-TW,ar,hi,ru,tr,vi,th,id,pl,nl,sv,no,da,fi,el,he,uk,cs,ro,hu,bg,hr,sk,sl,lt,lv,et',
         layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
         autoDisplay: false,
         multilanguagePage: true
       }, 'google_translate_element');
       
-      // Auto-traducir según el idioma del navegador
+      // Aplicar traducción automática después de cargar
       setTimeout(function() {
-        var userLang = navigator.language || navigator.userLanguage;
-        var langCode = userLang.split('-')[0];
+        const preferredLang = localStorage.getItem('preferredLanguage') || 
+                             (navigator.language || navigator.userLanguage).split('-')[0];
         
-        // Si el idioma no es español, activar la traducción automática
-        if (langCode !== 'es') {
-          var selectField = document.querySelector('.goog-te-combo');
+        console.log('Aplicando traducción a:', preferredLang);
+        
+        if (preferredLang && preferredLang !== 'en') {
+          const selectField = document.querySelector('.goog-te-combo');
           if (selectField) {
-            selectField.value = langCode;
+            selectField.value = preferredLang;
             selectField.dispatchEvent(new Event('change'));
+            console.log('Traducción activada para:', preferredLang);
           }
         }
-      }, 1000);
+      }, 1500);
     }
   </script>
   <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
   <style>
-    /* Ocultar COMPLETAMENTE todos los elementos de Google Translate */
+    /* Ocultar banner de Google Translate pero mantener funcionalidad */
     .goog-te-banner-frame.skiptranslate {
       display: none !important;
     }
@@ -90,18 +107,16 @@ console.log('%cEste sitio está protegido contra inspección de código.', 'font
     body {
       top: 0px !important;
     }
-    /* Ocultar el widget de Google Translate completamente */
+    /* Ocultar el widget pero mantener funcionalidad */
     #google_translate_element {
-      display: none !important;
-      visibility: hidden !important;
-      opacity: 0 !important;
-      position: absolute !important;
-      left: -9999px !important;
+      position: fixed;
+      top: -9999px;
+      left: -9999px;
+      visibility: hidden;
+      opacity: 0;
+      pointer-events: none;
     }
     .goog-te-gadget {
-      display: none !important;
-    }
-    .goog-te-combo {
       display: none !important;
     }
     /* Ocultar el logo de Google Translate */
@@ -115,13 +130,9 @@ console.log('%cEste sitio está protegido contra inspección de código.', 'font
     iframe.goog-te-banner-frame {
       display: none !important;
     }
-    /* Asegurar que no aparezca nada de Google */
+    /* Ocultar elementos de Google */
     .skiptranslate {
       display: none !important;
-    }
-    /* Ocultar cualquier elemento con el atributo translate */
-    [translate="no"] {
-      display: inline !important;
     }
   </style>
   <!-- Firebase (compat) -->
@@ -5793,13 +5804,27 @@ function saveNote() {
   function setLanguage(lang) {
     currentLanguage = lang;
     localStorage.setItem("selectedLanguage", lang);
+    localStorage.setItem("preferredLanguage", lang);
+    
+    // Aplicar traducción de Google Translate
+    const selectField = document.querySelector('.goog-te-combo');
+    if (selectField && lang !== 'en') {
+      selectField.value = lang;
+      selectField.dispatchEvent(new Event('change'));
+    }
+    
     const langOverlay = document.getElementById('lang-loading-overlay');
-    langOverlay.style.display = "flex";
-    setTimeout(() => {
-      updateTranslations();
-      langOverlay.style.display = "none";
-      document.getElementById('language-modal').style.display = "none";
-    }, 1000);
+    if (langOverlay) {
+      langOverlay.style.display = "flex";
+      setTimeout(() => {
+        updateTranslations();
+        langOverlay.style.display = "none";
+        const langModal = document.getElementById('language-modal');
+        if (langModal) {
+          langModal.style.display = "none";
+        }
+      }, 1000);
+    }
   }
   window.addEventListener('load', () => {
     setTimeout(() => {
@@ -5999,6 +6024,20 @@ function saveNote() {
     }
   });
   firebase.auth().onAuthStateChanged(user => {
+    // Aplicar traducción automática al cargar
+    setTimeout(() => {
+      const preferredLang = localStorage.getItem('preferredLanguage') || 
+                           (navigator.language || navigator.userLanguage).split('-')[0];
+      
+      if (preferredLang && preferredLang !== 'en') {
+        const selectField = document.querySelector('.goog-te-combo');
+        if (selectField) {
+          selectField.value = preferredLang;
+          selectField.dispatchEvent(new Event('change'));
+        }
+      }
+    }, 2000);
+    
     if (user) {
       if (authorizedEmails.includes(user.email)) {
         document.getElementById('live-transmit-btn').style.display = "block";
