@@ -1,10 +1,10 @@
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 
 const s3Client = new S3Client({
-  region: process.env.AWS_REGION || 'us-east-2',
+  region: process.env.MY_AWS_REGION || 'us-east-2',
   credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+    accessKeyId: process.env.MY_AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.MY_AWS_SECRET_ACCESS_KEY,
   },
 });
 
@@ -32,7 +32,7 @@ exports.handler = async (event) => {
     const key = `stories/${userId}/${timestamp}_${fileName}`;
 
     const command = new PutObjectCommand({
-      Bucket: process.env.AWS_S3_BUCKET_NAME || 'libros-de-glam-2025',
+      Bucket: process.env.MY_AWS_S3_BUCKET_NAME || 'libros-de-glam-2025',
       Key: key,
       Body: buffer,
       ContentType: contentType || 'image/jpeg',
@@ -41,7 +41,7 @@ exports.handler = async (event) => {
 
     await s3Client.send(command);
 
-    const imageUrl = `https://${process.env.AWS_S3_BUCKET_NAME || 'libros-de-glam-2025'}.s3.${process.env.AWS_REGION || 'us-east-2'}.amazonaws.com/${key}`;
+    const imageUrl = `https://${process.env.MY_AWS_S3_BUCKET_NAME || 'libros-de-glam-2025'}.s3.${process.env.MY_AWS_REGION || 'us-east-2'}.amazonaws.com/${key}`;
 
     return {
       statusCode: 200,
