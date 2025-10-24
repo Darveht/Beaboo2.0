@@ -1283,22 +1283,110 @@ setInterval(checkScheduledChapters, 60000);
 </div>
 
 <!-- MODAL DE SOPORTE -->
-<div id="support-modal" class="fixed inset-0 overflow-y-auto z-50 hidden">
-  <div class="p-6">
-    <button onclick="closeSupportModal()" class="text-[#58CC02] mb-4 flex items-center">
-      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 inline mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-        <polyline points="15 18 9 12 15 6" />
-      </svg>
-      <span>Volver</span>
-    </button>
-    <h2 class="text-2xl font-bold text-[#58CC02] mb-4 flex items-center justify-center">
-      <i class="fas fa-headset mr-2"></i> Soporte
-    </h2>
-    <form id="support-form" class="space-y-4">
-      <input id="support-subject" type="text" placeholder="Asunto" class="w-full p-3 border border-gray-200 rounded-xl" required>
-      <textarea id="support-message" placeholder="Describe tu problema o consulta..." class="w-full p-3 border border-gray-200 rounded-xl" rows="4" required></textarea>
-      <button id="btn-send-support" type="submit" class="w-full bg-blue-500 text-white p-3 rounded-xl">Enviar Solicitud</button>
-    </form>
+<div id="support-modal" class="fixed inset-0 z-50 hidden bg-white">
+  <div class="w-full h-full min-h-screen">
+    <div id="support-form-container" class="bg-white h-full min-h-screen p-8">
+      <div class="flex items-center mb-6">
+        <button onclick="closeSupportModal()" class="text-gray-600 hover:text-[#FE2C55] transition-colors mr-4">
+          <i class="fas fa-arrow-left text-2xl"></i>
+        </button>
+        <h1 class="text-3xl font-bold text-[#FE2C55]">Centro de Soporte</h1>
+      </div>
+      
+      <p class="text-gray-600 mb-6">
+        Estamos aquí para ayudarte. Completa el formulario y nos pondremos en contacto contigo pronto.
+      </p>
+
+      <form id="support-form" class="space-y-6">
+        <div>
+          <label for="support-email" class="block text-gray-700 font-semibold mb-2">
+            Correo Electrónico <span class="text-red-500">*</span>
+          </label>
+          <input 
+            id="support-email" 
+            type="email" 
+            placeholder="tu@email.com" 
+            class="w-full p-4 border-2 border-gray-200 rounded-xl focus:border-[#FE2C55] focus:outline-none transition-colors" 
+            required
+          >
+        </div>
+
+        <div>
+          <label for="support-problem-type" class="block text-gray-700 font-semibold mb-2">
+            Tipo de Problema <span class="text-red-500">*</span>
+          </label>
+          <select 
+            id="support-problem-type" 
+            class="w-full p-4 border-2 border-gray-200 rounded-xl focus:border-[#FE2C55] focus:outline-none transition-colors bg-white"
+            required
+          >
+            <option value="">Selecciona el tipo de problema</option>
+            <option value="technical">Problema Técnico</option>
+            <option value="account">Problema con la Cuenta</option>
+            <option value="payment">Problema de Pago</option>
+            <option value="content">Problema con Contenido</option>
+            <option value="feature">Solicitud de Función</option>
+            <option value="report">Reportar Abuso</option>
+            <option value="other">Otro</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="support-description" class="block text-gray-700 font-semibold mb-2">
+            Descripción del Problema <span class="text-red-500">*</span>
+            <span class="text-xs text-gray-500 font-normal">(mínimo 100 caracteres)</span>
+          </label>
+          <textarea 
+            id="support-description" 
+            placeholder="Describe detalladamente tu problema o consulta. Cuantos más detalles proporciones, mejor podremos ayudarte..." 
+            class="w-full p-4 border-2 border-gray-200 rounded-xl focus:border-[#FE2C55] focus:outline-none transition-colors resize-none" 
+            rows="6"
+            minlength="100"
+            required
+          ></textarea>
+          <div class="flex justify-between items-center mt-2">
+            <span id="char-count" class="text-sm text-gray-500">0 / 100 caracteres mínimo</span>
+          </div>
+        </div>
+
+        <button 
+          id="btn-send-support" 
+          type="submit" 
+          class="w-full bg-[#FE2C55] text-white font-bold py-4 rounded-xl hover:bg-[#e02849] transition-colors shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98] duration-200"
+        >
+          <i class="fas fa-paper-plane mr-2"></i>
+          Enviar Solicitud de Soporte
+        </button>
+      </form>
+    </div>
+
+    <div id="support-success-message" class="bg-white h-full min-h-screen p-8 hidden">
+      <div class="text-center">
+        <div class="mb-6">
+          <div class="mx-auto w-20 h-20 bg-green-100 rounded-full flex items-center justify-center">
+            <i class="fas fa-check-circle text-green-500 text-5xl"></i>
+          </div>
+        </div>
+        
+        <h2 class="text-3xl font-bold text-gray-800 mb-4">¡Solicitud Enviada!</h2>
+        
+        <p class="text-gray-600 mb-6 text-lg">
+          Hemos recibido tu mensaje y nos pondremos en contacto contigo pronto.
+        </p>
+        
+        <p class="text-gray-500 mb-8">
+          Nuestro equipo de soporte revisará tu solicitud y te responderá lo antes posible.
+        </p>
+
+        <button 
+          onclick="closeSupportModal()" 
+          class="inline-block bg-[#FE2C55] text-white font-bold py-3 px-8 rounded-xl hover:bg-[#e02849] transition-colors shadow-lg"
+        >
+          <i class="fas fa-arrow-left mr-2"></i>
+          Volver
+        </button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -5876,32 +5964,80 @@ function saveNote() {
   function openSupportModal() {
     const supportModal = document.getElementById('support-modal');
     supportModal.style.zIndex = 9999;
-    supportModal.style.display = "block";
+    supportModal.classList.remove('hidden');
   }
 
   function closeSupportModal() {
-    document.getElementById('support-modal').style.display = "none";
+    document.getElementById('support-modal').classList.add('hidden');
+    document.getElementById('support-form-container').classList.remove('hidden');
+    document.getElementById('support-success-message').classList.add('hidden');
+    document.getElementById('support-form').reset();
+    updateCharCount();
   }
+
+  function updateCharCount() {
+    const description = document.getElementById('support-description');
+    const charCount = document.getElementById('char-count');
+    const currentLength = description.value.length;
+    
+    charCount.textContent = `${currentLength} / 100 caracteres mínimo`;
+    
+    if (currentLength < 100) {
+      charCount.classList.add('text-red-500');
+      charCount.classList.remove('text-green-600');
+    } else {
+      charCount.classList.add('text-green-600');
+      charCount.classList.remove('text-red-500');
+    }
+  }
+
+  document.getElementById('support-description').addEventListener('input', updateCharCount);
+
   document.getElementById('support-form').addEventListener('submit', e => {
     e.preventDefault();
-    const subject = document.getElementById('support-subject').value;
-    const message = document.getElementById('support-message').value;
+    
+    const email = document.getElementById('support-email').value;
+    const problemType = document.getElementById('support-problem-type').value;
+    const description = document.getElementById('support-description').value;
+    
+    if (description.length < 100) {
+      alert("Por favor, proporciona una descripción de al menos 100 caracteres.");
+      return;
+    }
+    
     const user = firebase.auth().currentUser;
-    if (!user) return;
+    if (!user) {
+      alert("Debes iniciar sesión para enviar una solicitud de soporte.");
+      return;
+    }
+    
     const supportData = {
       userId: user.uid,
-      subject,
-      message,
+      email,
+      problemType,
+      description,
       timestamp: Date.now(),
       status: "pending"
     };
+    
+    const btn = document.getElementById('btn-send-support');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Enviando...';
+    
     firebase.database().ref('supportRequests').push(supportData)
       .then(() => {
-        alert("Tu solicitud ha sido enviada. Pronto recibirás una respuesta.");
-        closeSupportModal();
+        document.getElementById('support-form-container').classList.add('hidden');
+        document.getElementById('support-success-message').classList.remove('hidden');
+        
+        document.getElementById('support-form').reset();
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-paper-plane mr-2"></i>Enviar Solicitud de Soporte';
       })
       .catch(error => {
         console.error("Error al enviar solicitud de soporte:", error);
+        alert("❌ Hubo un error al enviar tu solicitud. Por favor, intenta nuevamente.");
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-paper-plane mr-2"></i>Enviar Solicitud de Soporte';
       });
   });
   /*********************** NAVEGACIÓN Y MODALES **************************/
