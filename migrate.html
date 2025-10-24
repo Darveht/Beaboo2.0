@@ -1,0 +1,258 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Migración Firebase → AWS S3</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        .warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        .warning-title {
+            font-weight: bold;
+            color: #856404;
+            margin-bottom: 5px;
+        }
+        .warning-text {
+            color: #856404;
+            font-size: 14px;
+        }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.3s;
+        }
+        button:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .progress {
+            margin-top: 20px;
+            display: none;
+        }
+        .progress-bar {
+            background: #e0e0e0;
+            height: 30px;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+        .progress-fill {
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            display: none;
+        }
+        .result.success {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+            color: #155724;
+        }
+        .result.error {
+            background: #f8d7da;
+            border-left: 4px solid #dc3545;
+            color: #721c24;
+        }
+        .result-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+        .result-details {
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        .story-list {
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(0,0,0,0.05);
+            border-radius: 4px;
+        }
+        .story-item {
+            padding: 5px 0;
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Migración de Datos</h1>
+        <p class="subtitle">Firebase → AWS S3</p>
+        
+        <div class="warning">
+            <div class="warning-title">⚠️ Importante</div>
+            <div class="warning-text">
+                Esta herramienta migrará todas tus historias de Firebase a AWS S3.
+                Las historias se mantendrán en Firebase después de la migración.
+            </div>
+        </div>
+
+        <button id="migrateBtn" onclick="startMigration()">
+            Iniciar Migración
+        </button>
+
+        <div class="progress" id="progress">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill">0%</div>
+            </div>
+            <div style="text-align: center; color: #666;">Migrando datos...</div>
+        </div>
+
+        <div class="result" id="result"></div>
+    </div>
+
+    <script>
+        async function startMigration() {
+            const btn = document.getElementById('migrateBtn');
+            const progress = document.getElementById('progress');
+            const progressFill = document.getElementById('progressFill');
+            const result = document.getElementById('result');
+
+            btn.disabled = true;
+            btn.textContent = 'Migrando...';
+            progress.style.display = 'block';
+            result.style.display = 'none';
+
+            // Simular progreso
+            let percent = 0;
+            const progressInterval = setInterval(() => {
+                percent += 10;
+                if (percent <= 90) {
+                    progressFill.style.width = percent + '%';
+                    progressFill.textContent = percent + '%';
+                }
+            }, 500);
+
+            try {
+                const response = await fetch('/.netlify/functions/migrate-firebase-to-s3', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        deleteFromFirebase: false
+                    })
+                });
+
+                const data = await response.json();
+
+                clearInterval(progressInterval);
+                progressFill.style.width = '100%';
+                progressFill.textContent = '100%';
+
+                setTimeout(() => {
+                    progress.style.display = 'none';
+                    
+                    if (response.ok && data.success) {
+                        result.className = 'result success';
+                        result.innerHTML = `
+                            <div class="result-title">✅ Migración Completada</div>
+                            <div class="result-details">
+                                <p><strong>${data.migrated}</strong> historias migradas exitosamente</p>
+                                ${data.errors > 0 ? `<p style="color: #dc3545;"><strong>${data.errors}</strong> errores encontrados</p>` : ''}
+                                
+                                ${data.stories && data.stories.length > 0 ? `
+                                    <div class="story-list">
+                                        ${data.stories.map(s => `
+                                            <div class="story-item">
+                                                ✓ ${s.title} (${s.firebaseId} → ${s.newId})
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                ` : ''}
+                            </div>
+                        `;
+                    } else {
+                        throw new Error(data.error || 'Error desconocido');
+                    }
+                    
+                    result.style.display = 'block';
+                    btn.disabled = false;
+                    btn.textContent = 'Migrar Nuevamente';
+                }, 500);
+
+            } catch (error) {
+                clearInterval(progressInterval);
+                progress.style.display = 'none';
+                
+                result.className = 'result error';
+                result.innerHTML = `
+                    <div class="result-title">❌ Error en la Migración</div>
+                    <div class="result-details">
+                        <p>${error.message}</p>
+                        <p>Por favor, verifica tu conexión y vuelve a intentar.</p>
+                    </div>
+                `;
+                result.style.display = 'block';
+                
+                btn.disabled = false;
+                btn.textContent = 'Reintentar Migración';
+            }
+        }
+    </script>
+</body>
+</html>
