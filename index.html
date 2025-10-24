@@ -6105,6 +6105,10 @@ function saveNote() {
       document.getElementById('support-form-container').classList.add('hidden');
       document.getElementById('support-success-message').classList.remove('hidden');
       
+      setTimeout(() => {
+        closeSupportModal();
+      }, 3000);
+      
       document.getElementById('support-form').reset();
       btn.disabled = false;
       btn.innerHTML = '<i class="fas fa-paper-plane mr-2"></i>Enviar Solicitud de Soporte';
