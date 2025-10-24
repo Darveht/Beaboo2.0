@@ -51,6 +51,60 @@ console.log('%cEste sitio está protegido contra inspección de código.', 'font
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Font Awesome CDN -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-pap6t+K2bD6xIxQqkQ3sM8e+RXw7C3DyrgXV++o2aL/88+/9kS/l+SmpD8zZR1oN40Nq3QfT7HigDYfFW1zZAQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <!-- Google Translate -->
+  <script type="text/javascript">
+    function googleTranslateElementInit() {
+      new google.translate.TranslateElement({
+        pageLanguage: 'es',
+        includedLanguages: 'en,es,pt,fr,de,it,ja,ko,zh-CN,zh-TW,ar,hi,ru,tr,vi,th,id,pl,nl,sv,no,da,fi,el,he,uk,cs,ro,hu,bg,hr,sk,sl,lt,lv,et',
+        layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
+        autoDisplay: true,
+        multilanguagePage: true
+      }, 'google_translate_element');
+      
+      // Auto-traducir según el idioma del navegador
+      setTimeout(function() {
+        var userLang = navigator.language || navigator.userLanguage;
+        var langCode = userLang.split('-')[0];
+        
+        // Si el idioma no es español, activar la traducción automática
+        if (langCode !== 'es') {
+          var selectField = document.querySelector('.goog-te-combo');
+          if (selectField) {
+            selectField.value = langCode;
+            selectField.dispatchEvent(new Event('change'));
+          }
+        }
+      }, 1000);
+    }
+  </script>
+  <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+  <style>
+    /* Ocultar el banner superior de Google Translate */
+    .goog-te-banner-frame.skiptranslate {
+      display: none !important;
+    }
+    body {
+      top: 0px !important;
+    }
+    /* Estilizar el selector de idioma */
+    #google_translate_element {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      z-index: 9999;
+      background: white;
+      padding: 5px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    #google_translate_element select {
+      border: none;
+      background: transparent;
+      padding: 5px;
+      font-size: 14px;
+    }
+  </style>
   <!-- Firebase (compat) -->
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
@@ -1790,6 +1844,9 @@ setInterval(checkScheduledChapters, 60000);
 </div>
 
 <body class="bg-white font-sans text-[#161823]">
+  
+  <!-- Google Translate Selector -->
+  <div id="google_translate_element"></div>
   
   <div id="auth-form" class="w-full h-screen flex flex-col justify-center p-6">
     <!-- Centered title -->
