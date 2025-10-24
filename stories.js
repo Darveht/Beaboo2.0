@@ -211,7 +211,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 progressText.textContent = 'Subiendo...';
                 progressBar.style.width = '70%';
                 
-                // Subir historia completa
+                // Subir historia
                 const response = await fetch('/.netlify/functions/upload-story', {
                     method: 'POST',
                     headers: {
