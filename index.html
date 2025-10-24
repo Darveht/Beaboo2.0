@@ -4974,90 +4974,81 @@ function openPhotoDetail(photo) {
     const imageInput = document.getElementById('note-image');
     
     if (!content && !imageInput.files.length) {
-      alert('请写一些内容或添加图片');
+      alert('Por favor escribe algo o agrega una imagen');
       return;
     }
 
     const user = firebase.auth().currentUser;
     if (!user) {
-      alert('你必须登录才能发布笔记');
+      alert('Debes iniciar sesión para publicar una nota');
       return;
     }
 
     const publishButton = document.querySelector('button[onclick="publishNote()"]');
     publishButton.disabled = true;
-    publishButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 发布中...';
+    publishButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Publicando...';
 
     try {
       const snapshot = await firebase.database().ref('users/' + user.uid).once('value');
       const userData = snapshot.val();
-      const note = {
-        content: content,
-        authorId: user.uid,
-        authorName: userData.username || '用户',
-        authorImage: userData.profileImage || 'https://via.placeholder.com/150',
-        timestamp: Date.now(),
-        likes: 0
-      };
+      
+      let imageData = null;
+      let fileName = null;
+      let contentType = null;
 
       if (imageInput.files.length > 0) {
         const reader = new FileReader();
-        reader.onload = async function(e) {
-          const base64String = e.target.result;
-          const timestamp = Date.now();
-
-          const response = await fetch('/.netlify/functions/upload-image', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              imageData: base64String,
-              fileName: imageInput.files[0].name,
-              userId: user.uid,
-              timestamp: timestamp,
-              contentType: imageInput.files[0].type,
-              imageType: 'notes'
-            })
-          });
-
-          const result = await response.json();
-          
-          if (!response.ok) {
-            throw new Error(result.error || 'Error al subir imagen');
-          }
-
-          note.imageUrl = result.imageUrl;
-          await firebase.database().ref('communityNotes').push(note);
-          
-          document.getElementById('note-content').value = '';
-          imageInput.value = '';
-          document.getElementById('image-preview').classList.add('hidden');
-          switchCommunityTab('feed');
-          publishButton.disabled = false;
-          publishButton.innerHTML = '发布笔记';
-          alert('笔记发布成功！');
-        };
-        reader.onerror = (error) => {
-          console.error('发布错误:', error);
-          alert('发布笔记时出错。请重试。');
-          publishButton.disabled = false;
-          publishButton.innerHTML = '发布笔记';
-        };
-        reader.readAsDataURL(imageInput.files[0]);
-      } else {
-        await firebase.database().ref('communityNotes').push(note);
-        document.getElementById('note-content').value = '';
-        switchCommunityTab('feed');
-        publishButton.disabled = false;
-        publishButton.innerHTML = '发布笔记';
-        alert('笔记发布成功！');
+        const file = imageInput.files[0];
+        
+        const base64String = await new Promise((resolve, reject) => {
+          reader.onload = (e) => resolve(e.target.result);
+          reader.onerror = (error) => reject(error);
+          reader.readAsDataURL(file);
+        });
+        
+        imageData = base64String;
+        fileName = file.name;
+        contentType = file.type;
       }
-    } catch (error) {
-      console.error('发布错误:', error);
-      alert('发布笔记时出错。请重试。');
+
+      // Subir nota a AWS S3
+      const response = await fetch('/.netlify/functions/upload-note', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          content: content,
+          userId: user.uid,
+          authorName: userData.username || 'Usuario',
+          authorImage: userData.profileImage || 'https://via.placeholder.com/150',
+          imageData: imageData,
+          fileName: fileName,
+          contentType: contentType
+        })
+      });
+
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || 'Error al publicar nota');
+      }
+
+      document.getElementById('note-content').value = '';
+      imageInput.value = '';
+      document.getElementById('image-preview').classList.add('hidden');
+      switchCommunityTab('feed');
       publishButton.disabled = false;
-      publishButton.innerHTML = '发布笔记';
+      publishButton.innerHTML = 'Publicar';
+      alert('¡Nota publicada exitosamente!');
+      
+      // Recargar notas
+      loadNotes();
+    } catch (error) {
+      console.error('Error al publicar:', error);
+      alert('Error al publicar la nota. Por favor intenta de nuevo.');
+      publishButton.disabled = false;
+      publishButton.innerHTML = 'Publicar';
     }
   }
 
@@ -5079,17 +5070,25 @@ function openPhotoDetail(photo) {
     });
   }
 
-  function loadNotes() {
+  async function loadNotes() {
     const feedContainer = document.getElementById('notes-feed');
+    feedContainer.innerHTML = '<div class="text-center py-8"><i class="fas fa-spinner fa-spin text-2xl text-[#FE2C55]"></i></div>';
     
-    firebase.database().ref('communityNotes').orderByChild('timestamp').limitToLast(50).on('value', snapshot => {
-      // 在添加新笔记之前完全清空容器
-      feedContainer.innerHTML = '';
+    try {
+      const response = await fetch('/.netlify/functions/get-notes?limit=50');
+      const result = await response.json();
       
-      const notes = [];
-      snapshot.forEach(child => {
-        notes.unshift({...child.val(), id: child.key});
-      });
+      if (!response.ok) {
+        throw new Error(result.error || 'Error al cargar notas');
+      }
+
+      feedContainer.innerHTML = '';
+      const notes = result.notes || [];
+
+      if (notes.length === 0) {
+        feedContainer.innerHTML = '<div class="text-center py-8 text-gray-500">No hay notas aún. ¡Sé el primero en publicar!</div>';
+        return;
+      }
 
       notes.forEach(note => {
         const noteElement = document.createElement('div');
@@ -5103,40 +5102,31 @@ function openPhotoDetail(photo) {
             </div>
           </div>
           <p class="mb-3">${note.content}</p>
-          ${note.imageUrl ? `<img src="${note.imageUrl}" alt="笔记图片" class="w-full rounded-lg mb-3 max-h-96 object-cover">` : ''}
+          ${note.imageUrl ? `<img src="${note.imageUrl}" alt="Imagen de nota" class="w-full rounded-lg mb-3 max-h-96 object-cover">` : ''}
           <div class="flex items-center space-x-4">
-            <button id="like-btn-${note.id}" onclick="likeNote('${note.id}')" class="flex items-center text-[#FE2C55] hover:text-red-600 transition-colors">
+            <button id="like-btn-${note.noteId}" onclick="likeNote('${note.noteId}')" class="flex items-center text-[#FE2C55] hover:text-red-600 transition-colors">
               <svg class="w-5 h-5 mr-1" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
               </svg>
-              <span id="like-count-${note.id}">${note.likes || 0}</span>
+              <span id="like-count-${note.noteId}">${note.likes || 0}</span>
             </button>
             ${note.authorId === firebase.auth().currentUser?.uid ? 
-              `<button onclick="deleteNote('${note.id}')" class="text-red-500 hover:text-red-700">
-                <i class="fas fa-trash"></i> 删除
+              `<button onclick="deleteNote('${note.noteId}')" class="text-red-500 hover:text-red-700">
+                <i class="fas fa-trash"></i> Eliminar
               </button>` : 
-              `<button onclick="reportNote('${note.id}')" class="text-gray-500 hover:text-gray-700 flex items-center">
-                <i class="fas fa-flag mr-1"></i> 举报
+              `<button onclick="reportNote('${note.noteId}')" class="text-gray-500 hover:text-gray-700 flex items-center">
+                <i class="fas fa-flag mr-1"></i> Reportar
               </button>`
             }
           </div>
         `;
         
-        // 检查用户是否已经点赞这个笔记
-        const user = firebase.auth().currentUser;
-        if (user) {
-          firebase.database().ref('userLikes/' + user.uid + '/' + note.id).once('value').then(likeSnapshot => {
-            const likeBtn = document.getElementById(`like-btn-${note.id}`);
-            if (likeSnapshot.exists() && likeBtn) {
-              likeBtn.style.opacity = '0.6';
-              likeBtn.style.pointerEvents = 'none';
-              likeBtn.title = '你已经点赞了这个笔记';
-            }
-          });
-        }
         feedContainer.appendChild(noteElement);
       });
-    });
+    } catch (error) {
+      console.error('Error al cargar notas:', error);
+      feedContainer.innerHTML = '<div class="text-center py-8 text-red-500">Error al cargar notas. Por favor recarga la página.</div>';
+    }
   }
 
   function moderarContenidoNota(texto) {
@@ -5224,66 +5214,79 @@ function moderarNota(noteId, content) {
   }, 5000);
 }
 
-function deleteNote(noteId) {
-  if (!confirm('你确定要删除这个笔记吗？')) return;
+async function deleteNote(noteId) {
+  if (!confirm('¿Estás seguro de que quieres eliminar esta nota?')) return;
   
-  firebase.database().ref('communityNotes/' + noteId).remove()
-    .then(() => {
-      alert('笔记删除成功');
-    })
-    .catch(error => {
-      console.error('删除笔记时出错:', error);
-      alert('删除笔记时出错');
+  try {
+    const response = await fetch('/.netlify/functions/delete-note', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ noteId })
     });
+
+    const result = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(result.error || 'Error al eliminar nota');
+    }
+
+    alert('Nota eliminada exitosamente');
+    loadNotes(); // Recargar notas
+  } catch (error) {
+    console.error('Error al eliminar nota:', error);
+    alert('Error al eliminar la nota');
+  }
 }
 
 function reportNote(noteId) {
-  const noteRef = firebase.database().ref('communityNotes/' + noteId);
-  noteRef.once('value').then(snapshot => {
-    const note = snapshot.val();
-    if (note) {
-      moderarNota(noteId, note.content);
-    }
-  });
+  alert('Función de reporte enviada. El equipo revisará esta nota.');
 }
 
-function likeNote(noteId) {
+async function likeNote(noteId) {
     const user = firebase.auth().currentUser;
     if (!user) return;
 
-    const userLikeRef = firebase.database().ref('userLikes/' + user.uid + '/' + noteId);
-    
-    userLikeRef.once('value').then(snapshot => {
-      if (!snapshot.exists()) {
-        // Marcar que el usuario ya dio like
-        userLikeRef.set(true);
-        
-        // Incrementar el contador de likes
-        const noteRef = firebase.database().ref('communityNotes/' + noteId);
-        noteRef.transaction(note => {
-          if (note) {
-            note.likes = (note.likes || 0) + 1;
-          }
-          return note;
-        });
+    try {
+      const response = await fetch('/.netlify/functions/like-note', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          noteId: noteId,
+          userId: user.uid 
+        })
+      });
 
-        // Obtener información de la nota para notificar al autor
-        noteRef.once('value').then(noteSnapshot => {
-          const noteData = noteSnapshot.val();
-          if (noteData && noteData.authorId !== user.uid) {
-            // Solo notificar si no es el propio autor
-            firebase.database().ref('users/' + user.uid).once('value').then(userSnap => {
-              const userData = userSnap.val();
-              const userName = userData.username || 'Alguien';
-              addNotification(noteData.authorId, `${userName} le dio like a tu nota en la comunidad`, 'like');
-            });
-          }
-        });
-      } else {
-        // El usuario ya dio like, mostrar mensaje
-        console.log('Ya has dado like a esta nota');
+      const result = await response.json();
+      
+      if (!response.ok) {
+        if (result.error === 'User already liked this note') {
+          console.log('Ya has dado like a esta nota');
+        } else {
+          throw new Error(result.error || 'Error al dar like');
+        }
+        return;
       }
-    });
+
+      // Actualizar el contador en la UI
+      const likeCountElement = document.getElementById(`like-count-${noteId}`);
+      if (likeCountElement) {
+        likeCountElement.textContent = result.likes;
+      }
+
+      // Deshabilitar el botón de like
+      const likeBtn = document.getElementById(`like-btn-${noteId}`);
+      if (likeBtn) {
+        likeBtn.style.opacity = '0.6';
+        likeBtn.style.pointerEvents = 'none';
+        likeBtn.title = 'Ya has dado like a esta nota';
+      }
+    } catch (error) {
+      console.error('Error al dar like:', error);
+    }
 }
 
   // VARIABLES GLOBALES
