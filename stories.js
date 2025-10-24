@@ -40,8 +40,13 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('story-upload-form').addEventListener('submit', handleStoryUpload);
     document.getElementById('story-viewer-close').addEventListener('click', closeStoryViewer);
 
-    // Load stories
+    // Load stories automatically on page load
     loadStories();
+    
+    // Reload stories every 30 seconds to show new stories from other users
+    setInterval(() => {
+        loadStories();
+    }, 30000);
 
     function handleFileSelect(e) {
         const file = e.target.files[0];
@@ -321,16 +326,18 @@ document.addEventListener('DOMContentLoaded', () => {
                             <span class="username">${displayName}</span>
                         </div>
                     </div>
-                    <button class="story-close">×</button>
-                    ${currentUser && currentUser.uid === userId ? `
-                        <div class="story-options" data-story-id="${story.id}">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
-                                <circle cx="12" cy="5" r="2"/>
-                                <circle cx="12" cy="12" r="2"/>
-                                <circle cx="12" cy="19" r="2"/>
-                            </svg>
-                        </div>
-                    ` : ''}
+                    <div class="story-top-controls">
+                        <button class="story-close">×</button>
+                        ${currentUser && currentUser.uid === userId ? `
+                            <div class="story-options" data-story-id="${story.id}">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+                                    <circle cx="12" cy="5" r="2"/>
+                                    <circle cx="12" cy="12" r="2"/>
+                                    <circle cx="12" cy="19" r="2"/>
+                                </svg>
+                            </div>
+                        ` : ''}
+                    </div>
                     <img src="${story.coverImage}" class="story-image">
                     <div class="story-footer">
                         <div class="story-views">${story.views || 0} vistas</div>

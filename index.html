@@ -5934,6 +5934,14 @@ function saveNote() {
       // CARGAR ESTADÍSTICAS EN TIEMPO REAL
       loadUserStats(user.uid);
       
+      // Cargar historias de otros usuarios inmediatamente
+      setTimeout(() => {
+        const storiesScript = document.querySelector('script[src="stories.js"]');
+        if (storiesScript && window.loadStories) {
+          window.loadStories();
+        }
+      }, 1000);
+      
       firebase.database().ref('users/' + user.uid).once('value').then(snapshot => {
         const data = snapshot.val();
         if (data && data.blocked && data.blockedUntil && Date.now() < data.blockedUntil) {
