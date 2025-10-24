@@ -53,6 +53,23 @@ BeaBoo es una aplicación de redes sociales estilo Instagram/TikTok que permite 
 
 ## Cambios Recientes (24 Oct 2025)
 
+### Sistema de Recomendaciones Mejorado
+1. **Algoritmo basado en calificaciones del usuario** - El sistema ahora analiza las calificaciones que el usuario da a los capítulos
+2. **Recomendaciones personalizadas por categoría** - Se consideran las categorías que el usuario ha calificado mejor
+3. **Sistema de puntuación inteligente** - Combina vistas, calificaciones del usuario y calificaciones generales
+4. **Migración completa a AWS S3** - Todas las historias se cargan ahora desde AWS S3 en lugar de Firebase Realtime Database
+
+### Nuevas Secciones de Contenido
+1. **Trending Stories (Historias en Tendencia)** - Muestra historias publicadas en los últimos 7 días con más vistas y mejor calificación
+2. **Popular in Mystery (Popular en Misterio)** - Sección dedicada a las historias de misterio más vistas
+3. **Best in Adventure (Mejores en Aventura)** - Muestra las historias de aventura mejor calificadas
+
+### Autores Recomendados Rediseñados
+1. **Formato circular** - Los avatares de autores ahora son circulares en lugar de cuadrados
+2. **Tamaño optimizado** - Avatares más pequeños (80x80px) para mejor visualización
+3. **Botón de seguir integrado** - Botón "+" en la esquina inferior derecha para seguir al autor en tiempo real
+4. **Indicador de seguimiento** - El botón desaparece automáticamente si ya sigues al autor
+
 ### Mejoras al Modal de Historias
 1. **Modal de pantalla completa** - El modal ahora ocupa toda la pantalla como Instagram
 2. **Header mejorado** - Agregado botón de retroceso y título centrado
@@ -61,6 +78,9 @@ BeaBoo es una aplicación de redes sociales estilo Instagram/TikTok que permite 
 5. **Feedback visual mejorado** - Estados de "Subiendo", "Procesando" y "¡Historia subida!"
 
 ### Correcciones Técnicas
+- Migración completa de Firebase Realtime Database a AWS S3 para historias
+- Eliminación de código duplicado en funciones de carga
+- Función centralizad `initializeFeedSections()` para cargar todas las secciones
 - Mejor manejo de errores en el proceso de upload
 - Prevención de cierre prematuro del modal
 - Mensajes de error más descriptivos

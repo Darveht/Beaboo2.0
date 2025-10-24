@@ -1282,78 +1282,7 @@ setInterval(checkScheduledChapters, 60000);
     /*************** FUNCIONES PARA COMPRA DE MONEDAS (ELIMINADAS) ***************/
     // Se han removido las funciones openBuyCoinsModal(), closeBuyCoinsModal() y buyCoins()
     /*************** FIN FUNCIONES DE COMPRA DE MONEDAS ***************/
-    /*********************** NUEVAS FUNCIONES PARA SUGERENCIAS Y AUTORES DESTACADOS ***********************/
-    function loadSuggestedStories() {
-      firebase.database().ref('stories').once('value').then(snapshot => {
-        let stories = [];
-        snapshot.forEach(child => {
-          let story = child.val();
-          story.id = child.key;
-          stories.push(story);
-        });
-        stories.sort((a, b) => (b.ratingValue || 0) - (a.ratingValue || 0));
-        let suggested = stories.slice(0, 10);
-        const container = document.getElementById('suggested-stories');
-        container.innerHTML = '';
-        suggested.forEach(story => {
-          const card = document.createElement('div');
-          card.className = 'story-card cursor-pointer';
-          card.onclick = () => openStoryDetail(story);
-          card.innerHTML = `
-              <div class="rounded-2xl overflow-hidden shadow-md">
-                <div class="story-cover-container">
-                  <img src="${story.coverImage || '/api/placeholder/200/300'}" alt="${story.title}" class="story-cover-image">
-                </div>
-              </div>
-              <div class="mt-2">
-                <h3 class="font-semibold text-sm">${story.title}</h3>
-              </div>
-            `;
-          container.appendChild(card);
-        });
-      });
-    }
-
-    function loadFeaturedAuthors() {
-      firebase.database().ref('stories').once('value').then(snapshot => {
-        let authorCounts = {};
-        snapshot.forEach(child => {
-          let story = child.val();
-          if (story && story.userId) {
-            if (!authorCounts[story.userId]) authorCounts[story.userId] = 0;
-            authorCounts[story.userId]++;
-          }
-        });
-        let authorsArray = [];
-        for (let uid in authorCounts) {
-          authorsArray.push({
-            uid: uid,
-            count: authorCounts[uid]
-          });
-        }
-        authorsArray.sort((a, b) => b.count - a.count);
-        let topAuthors = authorsArray.slice(0, 10);
-        const container = document.getElementById('featured-authors');
-        container.innerHTML = '';
-        topAuthors.forEach(author => {
-          firebase.database().ref('users/' + author.uid).once('value').then(userSnap => {
-            const userData = userSnap.val();
-            const card = document.createElement('div');
-            card.className = 'story-card cursor-pointer';
-            card.onclick = () => openAuthorProfile(author.uid);
-            card.innerHTML = `
-                <div class="rounded-2xl overflow-hidden shadow-md">
-                  <img src="${userData.profileImage || 'https://via.placeholder.com/150'}" alt="${userData.username}" class="w-full h-40 object-cover">
-                </div>
-                <div class="mt-2">
-                  <h3 class="font-semibold text-sm">${userData.username}</h3>
-                </div>
-              `;
-            container.appendChild(card);
-          });
-        });
-      });
-    }
+    /*********************** LAS FUNCIONES DE HISTORIAS ESTÁN DEFINIDAS MÁS ADELANTE CON AWS S3 ***********************/
     /*************** FIN NUEVAS FUNCIONES ***********************/
   </script>
 </head>
@@ -2168,6 +2097,27 @@ firebase.auth().onAuthStateChanged(user => {
       <div id="terror-stories" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div>
     </section>
 
+    <section id="trending-section" class="mb-10">
+      <div class="flex justify-between items-center mb-4">
+        <h2 id="trending-title" class="text-2xl font-bold text-[#FE2C55]">Trending Stories</h2>
+      </div>
+      <div id="trending-stories" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div>
+    </section>
+
+    <section id="mystery-section" class="mb-10">
+      <div class="flex justify-between items-center mb-4">
+        <h2 id="mystery-title" class="text-2xl font-bold text-[#FE2C55]">Popular in Mystery</h2>
+      </div>
+      <div id="mystery-stories" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div>
+    </section>
+
+    <section id="adventure-section" class="mb-10">
+      <div class="flex justify-between items-center mb-4">
+        <h2 id="adventure-title" class="text-2xl font-bold text-[#FE2C55]">Best in Adventure</h2>
+      </div>
+      <div id="adventure-stories" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div>
+    </section>
+
     <section id="suggested-section" class="mb-10">
       <div class="flex justify-between items-center mb-4">
         <h2 id="suggested-title" class="text-2xl font-bold" style="color: #FE2C55 !important;">Recommended for You</h2>
@@ -2179,7 +2129,7 @@ firebase.auth().onAuthStateChanged(user => {
       <div class="flex justify-between items-center mb-4">
         <h2 id="featured-authors-title" class="text-2xl font-bold" style="color: #FE2C55 !important;">Featured Authors</h2>
       </div>
-      <div id="featured-authors" class="flex space-x-auto overflow-x-auto"></div>
+      <div id="featured-authors" class="flex space-x-4 overflow-x-auto px-2"></div>
     </section>
     </div>
   </div>
@@ -6139,8 +6089,7 @@ function saveNote() {
         mainApp.classList.remove('hidden');
         loadStories();
         loadUserStories(user.uid);
-        loadSuggestedStories();
-        loadFeaturedAuthors();
+        initializeFeedSections();
         
         if (data) {
           let displayName = data.username || "Usuario";
@@ -7901,78 +7850,300 @@ document.getElementById('category-filter').addEventListener('change', performRea
       });
     });
   }
+  
+  /*********************** FUNCIONES AUXILIARES PARA CARGAR HISTORIAS DESDE AWS S3 **************************/
+  
+  async function loadStoriesFromAWS() {
+    try {
+      const response = await fetch('/.netlify/functions/get-stories');
+      const data = await response.json();
+      return data.stories || [];
+    } catch (error) {
+      console.error('Error loading stories from AWS:', error);
+      return [];
+    }
+  }
+
+  async function getUserRatingPreferences(userId) {
+    const allStories = await loadStoriesFromAWS();
+    const userRatings = {};
+    const categoryScores = {};
+    
+    for (const story of allStories.slice(0, 30)) {
+      try {
+        const chaptersResponse = await fetch(`/.netlify/functions/get-chapters?storyId=${story.id}`);
+        const chaptersData = await chaptersResponse.json();
+        
+        if (chaptersData.chapters) {
+          chaptersData.chapters.forEach(chapter => {
+            if (chapter.ratings && chapter.ratings[userId]) {
+              const rating = chapter.ratings[userId];
+              if (!categoryScores[story.category]) {
+                categoryScores[story.category] = { total: 0, count: 0 };
+              }
+              categoryScores[story.category].total += rating;
+              categoryScores[story.category].count += 1;
+              
+              if (!userRatings[story.id]) {
+                userRatings[story.id] = { ratings: [], avgRating: 0, category: story.category };
+              }
+              userRatings[story.id].ratings.push(rating);
+            }
+          });
+        }
+      } catch (error) {
+        console.error('Error loading chapters for story:', story.id, error);
+      }
+    }
+    
+    Object.keys(userRatings).forEach(storyId => {
+      const ratings = userRatings[storyId].ratings;
+      userRatings[storyId].avgRating = ratings.reduce((a, b) => a + b, 0) / ratings.length;
+    });
+    
+    Object.keys(categoryScores).forEach(category => {
+      categoryScores[category].avg = categoryScores[category].total / categoryScores[category].count;
+    });
+    
+    return { userRatings, categoryScores };
+  }
+
+  function createStoryCard(story) {
+    const card = document.createElement('div');
+    card.className = 'cursor-pointer transform transition-transform hover:scale-105';
+    card.onclick = () => openStoryDetail(story);
+    card.innerHTML = `
+      <div class="rounded-2xl overflow-hidden shadow-md">
+        <img src="${story.coverImage || '/api/placeholder/200/300'}" alt="${story.title}" class="w-full h-40 object-cover">
+      </div>
+      <div class="mt-2">
+        <h3 class="font-semibold text-sm truncate">${story.title}</h3>
+        ${story.ratingValue ? `<div class="flex items-center mt-1">
+          <i class="fas fa-star text-yellow-400 text-xs"></i>
+          <span class="text-xs text-gray-600 ml-1">${story.ratingValue.toFixed(1)}</span>
+        </div>` : ''}
+      </div>
+    `;
+    return card;
+  }
+
+  async function followAuthor(authorId, buttonElement) {
+    const user = firebase.auth().currentUser;
+    if (!user) {
+      alert('Debes iniciar sesión para seguir autores');
+      return;
+    }
+    
+    try {
+      buttonElement.innerHTML = '<i class="fas fa-spinner fa-spin text-xs"></i>';
+      buttonElement.disabled = true;
+      
+      await firebase.database().ref('following/' + user.uid + '/' + authorId).set(true);
+      await firebase.database().ref('followers/' + authorId + '/' + user.uid).set(true);
+      
+      buttonElement.classList.add('hidden');
+      
+      await addNotification(authorId, `${user.displayName || user.email} te ha seguido`, 'follow');
+    } catch (error) {
+      console.error('Error following author:', error);
+      alert('Error al seguir al autor');
+      buttonElement.innerHTML = '<i class="fas fa-plus text-xs"></i>';
+      buttonElement.disabled = false;
+    }
+  }
+  
   /*********************** NUEVAS FUNCIONES: SUGERENCIAS Y AUTORES DESTACADOS **************************/
-  function loadSuggestedStories() {
-    firebase.database().ref('stories').once('value').then(snapshot => {
-      let stories = [];
-      snapshot.forEach(child => {
-        let story = child.val();
-        story.id = child.key;
-        stories.push(story);
+  async function loadSuggestedStories() {
+    const user = firebase.auth().currentUser;
+    const stories = await loadStoriesFromAWS();
+    const container = document.getElementById('suggested-stories');
+    container.innerHTML = '';
+    
+    if (!stories.length) {
+      container.innerHTML = '<p class="text-gray-500">No hay historias disponibles</p>';
+      return;
+    }
+    
+    let suggestedStories = [];
+    
+    if (user) {
+      const { userRatings, categoryScores } = await getUserRatingPreferences(user.uid);
+      
+      suggestedStories = stories.map(story => {
+        let score = story.views || 0;
+        
+        if (userRatings[story.id]) {
+          score += userRatings[story.id].avgRating * 500;
+        }
+        
+        if (categoryScores[story.category]) {
+          score += categoryScores[story.category].avg * 300;
+        }
+        
+        if (story.ratingValue) {
+          score += story.ratingValue * 100;
+        }
+        
+        return { ...story, score };
       });
-      stories.sort((a, b) => (b.ratingValue || 0) - (a.ratingValue || 0));
-      let suggested = stories.slice(0, 10);
-      const container = document.getElementById('suggested-stories');
-      container.innerHTML = '';
-      suggested.forEach(story => {
-        const card = document.createElement('div');
-        card.className = 'story-card cursor-pointer';
-        card.onclick = () => openStoryDetail(story);
-        card.innerHTML = `
-              <div class="rounded-2xl overflow-hidden shadow-md">
-                <div class="story-cover-container">
-                  <img src="${story.coverImage || '/api/placeholder/200/300'}" alt="${story.title}" class="story-cover-image">
-                </div>
-              </div>
-              <div class="mt-2">
-                <h3 class="font-semibold text-sm">${story.title}</h3>
-              </div>
-            `;
-        container.appendChild(card);
-      });
+      
+      suggestedStories.sort((a, b) => b.score - a.score);
+    } else {
+      suggestedStories = stories.sort((a, b) => (b.ratingValue || 0) - (a.ratingValue || 0));
+    }
+    
+    const suggested = suggestedStories.slice(0, 10);
+    suggested.forEach(story => {
+      const card = document.createElement('div');
+      card.className = 'story-card cursor-pointer';
+      card.onclick = () => openStoryDetail(story);
+      card.innerHTML = `
+        <div class="rounded-2xl overflow-hidden shadow-md">
+          <div class="story-cover-container">
+            <img src="${story.coverImage || '/api/placeholder/200/300'}" alt="${story.title}" class="story-cover-image">
+          </div>
+        </div>
+        <div class="mt-2">
+          <h3 class="font-semibold text-sm">${story.title}</h3>
+        </div>
+      `;
+      container.appendChild(card);
     });
   }
 
-  function loadFeaturedAuthors() {
-    firebase.database().ref('stories').once('value').then(snapshot => {
-      let authorCounts = {};
-      snapshot.forEach(child => {
-        let story = child.val();
-        if (story && story.userId) {
-          if (!authorCounts[story.userId]) authorCounts[story.userId] = 0;
-          authorCounts[story.userId]++;
+  async function loadFeaturedAuthors() {
+    const stories = await loadStoriesFromAWS();
+    const container = document.getElementById('featured-authors');
+    container.innerHTML = '';
+    
+    const authorCounts = {};
+    stories.forEach(story => {
+      if (story && story.userId) {
+        if (!authorCounts[story.userId]) {
+          authorCounts[story.userId] = { count: 0, username: story.username, email: story.email };
         }
-      });
-      let authorsArray = [];
-      for (let uid in authorCounts) {
-        authorsArray.push({
-          uid: uid,
-          count: authorCounts[uid]
-        });
+        authorCounts[story.userId].count++;
       }
-      authorsArray.sort((a, b) => b.count - a.count);
-      let topAuthors = authorsArray.slice(0, 10);
-      const container = document.getElementById('featured-authors');
-      container.innerHTML = '';
-      topAuthors.forEach(author => {
-        firebase.database().ref('users/' + author.uid).once('value').then(userSnap => {
-          const userData = userSnap.val();
-          const card = document.createElement('div');
-          card.className = 'story-card cursor-pointer';
-          card.onclick = () => openAuthorProfile(author.uid);
-          card.innerHTML = `
-                <div class="rounded-2xl overflow-hidden shadow-md">
-                  <img src="${userData.profileImage || 'https://via.placeholder.com/150'}" alt="${userData.username}" class="w-full h-40 object-cover">
-                </div>
-                <div class="mt-2">
-                  <h3 class="font-semibold text-sm">${userData.username}</h3>
-                </div>
-              `;
-          container.appendChild(card);
+    });
+    
+    const authorsArray = Object.keys(authorCounts).map(uid => ({
+      uid,
+      ...authorCounts[uid]
+    }));
+    
+    authorsArray.sort((a, b) => b.count - a.count);
+    const topAuthors = authorsArray.slice(0, 10);
+    
+    const user = firebase.auth().currentUser;
+    
+    for (const author of topAuthors) {
+      try {
+        const userData = await new Promise((resolve, reject) => {
+          firebase.database().ref('users/' + author.uid).once('value')
+            .then(snap => resolve(snap.val()))
+            .catch(reject);
         });
-      });
+        
+        const isFollowing = user ? await new Promise((resolve) => {
+          firebase.database().ref('following/' + user.uid + '/' + author.uid).once('value')
+            .then(snap => resolve(snap.exists()))
+            .catch(() => resolve(false));
+        }) : false;
+        
+        const card = document.createElement('div');
+        card.className = 'flex-shrink-0 flex flex-col items-center relative';
+        card.innerHTML = `
+          <div class="relative">
+            <div class="w-20 h-20 rounded-full overflow-hidden border-2 border-[#FE2C55] cursor-pointer hover:scale-105 transition-transform"
+                 onclick="openAuthorProfile('${author.uid}')">
+              <img src="${userData?.profileImage || 'https://via.placeholder.com/150'}" 
+                   alt="${userData?.username || author.username}" 
+                   class="w-full h-full object-cover">
+            </div>
+            <button class="absolute -bottom-1 -right-1 w-7 h-7 bg-[#FE2C55] text-white rounded-full flex items-center justify-center hover:bg-[#ef2950] transition shadow-lg ${isFollowing ? 'hidden' : ''}"
+                    onclick="followAuthor('${author.uid}', this)"
+                    title="Seguir">
+              <i class="fas fa-plus text-xs"></i>
+            </button>
+          </div>
+          <span class="text-xs mt-2 text-center font-medium truncate w-20">${userData?.username || author.username || 'Usuario'}</span>
+        `;
+        container.appendChild(card);
+      } catch (error) {
+        console.error('Error loading author:', author.uid, error);
+      }
+    }
+  }
+  
+  async function loadTrendingStories() {
+    const stories = await loadStoriesFromAWS();
+    const container = document.getElementById('trending-stories');
+    container.innerHTML = '';
+    
+    if (!stories.length) return;
+    
+    const now = Date.now();
+    const sevenDaysAgo = now - (7 * 24 * 60 * 60 * 1000);
+    
+    const trending = stories
+      .filter(story => story.timestamp > sevenDaysAgo)
+      .map(story => ({
+        ...story,
+        trendingScore: (story.views || 0) * 2 + (story.ratingValue || 0) * 100
+      }))
+      .sort((a, b) => b.trendingScore - a.trendingScore)
+      .slice(0, 8);
+    
+    trending.forEach(story => {
+      container.appendChild(createStoryCard(story));
     });
   }
+
+  async function loadMysteryStories() {
+    const stories = await loadStoriesFromAWS();
+    const container = document.getElementById('mystery-stories');
+    container.innerHTML = '';
+    
+    const mysteryStories = stories
+      .filter(story => story.category === 'misterio')
+      .sort((a, b) => (b.views || 0) - (a.views || 0))
+      .slice(0, 8);
+    
+    mysteryStories.forEach(story => {
+      container.appendChild(createStoryCard(story));
+    });
+  }
+
+  async function loadAdventureStories() {
+    const stories = await loadStoriesFromAWS();
+    const container = document.getElementById('adventure-stories');
+    container.innerHTML = '';
+    
+    const adventureStories = stories
+      .filter(story => story.category === 'aventura')
+      .sort((a, b) => (b.ratingValue || 0) - (a.ratingValue || 0))
+      .slice(0, 8);
+    
+    adventureStories.forEach(story => {
+      container.appendChild(createStoryCard(story));
+    });
+  }
+  
+  async function initializeFeedSections() {
+    try {
+      await Promise.all([
+        loadSuggestedStories(),
+        loadFeaturedAuthors(),
+        loadTrendingStories(),
+        loadMysteryStories(),
+        loadAdventureStories()
+      ]);
+      console.log('Todas las secciones cargadas exitosamente');
+    } catch (error) {
+      console.error('Error cargando secciones:', error);
+    }
+  }
+  
   /*********************** CARGA DE HISTORIAS DEL AUTOR **************************/
   function loadAuthorStories(authorId) {
     const authorStoriesRef = firebase.database().ref('stories').orderByChild('userId').equalTo(authorId);
@@ -8602,76 +8773,126 @@ document.getElementById('category-filter').addEventListener('change', performRea
     document.getElementById('letter-count').innerText = text.replace(/\s/g, "").length + " letras";
   });
   /*********************** NUEVAS FUNCIONES: SUGERENCIAS Y AUTORES DESTACADOS **************************/
-  function loadSuggestedStories() {
-    firebase.database().ref('stories').once('value').then(snapshot => {
-      let stories = [];
-      snapshot.forEach(child => {
-        let story = child.val();
-        story.id = child.key;
-        stories.push(story);
+  async function loadSuggestedStories() {
+    const user = firebase.auth().currentUser;
+    const stories = await loadStoriesFromAWS();
+    const container = document.getElementById('suggested-stories');
+    container.innerHTML = '';
+    
+    if (!stories.length) {
+      container.innerHTML = '<p class="text-gray-500">No hay historias disponibles</p>';
+      return;
+    }
+    
+    let suggestedStories = [];
+    
+    if (user) {
+      const { userRatings, categoryScores } = await getUserRatingPreferences(user.uid);
+      
+      suggestedStories = stories.map(story => {
+        let score = story.views || 0;
+        
+        if (userRatings[story.id]) {
+          score += userRatings[story.id].avgRating * 500;
+        }
+        
+        if (categoryScores[story.category]) {
+          score += categoryScores[story.category].avg * 300;
+        }
+        
+        if (story.ratingValue) {
+          score += story.ratingValue * 100;
+        }
+        
+        return { ...story, score };
       });
-      stories.sort((a, b) => (b.ratingValue || 0) - (a.ratingValue || 0));
-      let suggested = stories.slice(0, 10);
-      const container = document.getElementById('suggested-stories');
-      container.innerHTML = '';
-      suggested.forEach(story => {
-        const card = document.createElement('div');
-        card.className = 'story-card cursor-pointer';
-        card.onclick = () => openStoryDetail(story);
-        card.innerHTML = `
-              <div class="rounded-2xl overflow-hidden shadow-md">
-                <div class="story-cover-container">
-                  <img src="${story.coverImage || '/api/placeholder/200/300'}" alt="${story.title}" class="story-cover-image">
-                </div>
-              </div>
-              <div class="mt-2">
-                <h3 class="font-semibold text-sm">${story.title}</h3>
-              </div>
-            `;
-        container.appendChild(card);
-      });
+      
+      suggestedStories.sort((a, b) => b.score - a.score);
+    } else {
+      suggestedStories = stories.sort((a, b) => (b.ratingValue || 0) - (a.ratingValue || 0));
+    }
+    
+    const suggested = suggestedStories.slice(0, 10);
+    suggested.forEach(story => {
+      const card = document.createElement('div');
+      card.className = 'story-card cursor-pointer';
+      card.onclick = () => openStoryDetail(story);
+      card.innerHTML = `
+        <div class="rounded-2xl overflow-hidden shadow-md">
+          <div class="story-cover-container">
+            <img src="${story.coverImage || '/api/placeholder/200/300'}" alt="${story.title}" class="story-cover-image">
+          </div>
+        </div>
+        <div class="mt-2">
+          <h3 class="font-semibold text-sm">${story.title}</h3>
+        </div>
+      `;
+      container.appendChild(card);
     });
   }
 
-  function loadFeaturedAuthors() {
-    firebase.database().ref('stories').once('value').then(snapshot => {
-      let authorCounts = {};
-      snapshot.forEach(child => {
-        let story = child.val();
-        if (story && story.userId) {
-          if (!authorCounts[story.userId]) authorCounts[story.userId] = 0;
-          authorCounts[story.userId]++;
+  async function loadFeaturedAuthors() {
+    const stories = await loadStoriesFromAWS();
+    const container = document.getElementById('featured-authors');
+    container.innerHTML = '';
+    
+    const authorCounts = {};
+    stories.forEach(story => {
+      if (story && story.userId) {
+        if (!authorCounts[story.userId]) {
+          authorCounts[story.userId] = { count: 0, username: story.username, email: story.email };
         }
-      });
-      let authorsArray = [];
-      for (let uid in authorCounts) {
-        authorsArray.push({
-          uid: uid,
-          count: authorCounts[uid]
-        });
+        authorCounts[story.userId].count++;
       }
-      authorsArray.sort((a, b) => b.count - a.count);
-      let topAuthors = authorsArray.slice(0, 10);
-      const container = document.getElementById('featured-authors');
-      container.innerHTML = '';
-      topAuthors.forEach(author => {
-        firebase.database().ref('users/' + author.uid).once('value').then(userSnap => {
-          const userData = userSnap.val();
-          const card = document.createElement('div');
-          card.className = 'story-card cursor-pointer';
-          card.onclick = () => openAuthorProfile(author.uid);
-          card.innerHTML = `
-                <div class="rounded-2xl overflow-hidden shadow-md">
-                  <img src="${userData.profileImage || 'https://via.placeholder.com/150'}" alt="${userData.username}" class="w-full h-40 object-cover">
-                </div>
-                <div class="mt-2">
-                  <h3 class="font-semibold text-sm">${userData.username}</h3>
-                </div>
-              `;
-          container.appendChild(card);
-        });
-      });
     });
+    
+    const authorsArray = Object.keys(authorCounts).map(uid => ({
+      uid,
+      ...authorCounts[uid]
+    }));
+    
+    authorsArray.sort((a, b) => b.count - a.count);
+    const topAuthors = authorsArray.slice(0, 10);
+    
+    const user = firebase.auth().currentUser;
+    
+    for (const author of topAuthors) {
+      try {
+        const userData = await new Promise((resolve, reject) => {
+          firebase.database().ref('users/' + author.uid).once('value')
+            .then(snap => resolve(snap.val()))
+            .catch(reject);
+        });
+        
+        const isFollowing = user ? await new Promise((resolve) => {
+          firebase.database().ref('following/' + user.uid + '/' + author.uid).once('value')
+            .then(snap => resolve(snap.exists()))
+            .catch(() => resolve(false));
+        }) : false;
+        
+        const card = document.createElement('div');
+        card.className = 'flex-shrink-0 flex flex-col items-center relative';
+        card.innerHTML = `
+          <div class="relative">
+            <div class="w-20 h-20 rounded-full overflow-hidden border-2 border-[#FE2C55] cursor-pointer hover:scale-105 transition-transform"
+                 onclick="openAuthorProfile('${author.uid}')">
+              <img src="${userData?.profileImage || 'https://via.placeholder.com/150'}" 
+                   alt="${userData?.username || author.username}" 
+                   class="w-full h-full object-cover">
+            </div>
+            <button class="absolute -bottom-1 -right-1 w-7 h-7 bg-[#FE2C55] text-white rounded-full flex items-center justify-center hover:bg-[#ef2950] transition shadow-lg ${isFollowing ? 'hidden' : ''}"
+                    onclick="followAuthor('${author.uid}', this)"
+                    title="Seguir">
+              <i class="fas fa-plus text-xs"></i>
+            </button>
+          </div>
+          <span class="text-xs mt-2 text-center font-medium truncate w-20">${userData?.username || author.username || 'Usuario'}</span>
+        `;
+        container.appendChild(card);
+      } catch (error) {
+        console.error('Error loading author:', author.uid, error);
+      }
+    }
   }
   /*************** FIN NUEVAS FUNCIONES **************************/
 
