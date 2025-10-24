@@ -97,9 +97,26 @@ document.addEventListener('DOMContentLoaded', () => {
             storiesContainer.innerHTML = '';
 
             if (result.stories && result.stories.length > 0) {
-                // Filtrar historias recientes (últimas 24 horas)
-                const twentyFourHoursAgo = Date.now() - (24 * 60 * 60 * 1000);
-                const recentStories = result.stories.filter(story => story.timestamp > twentyFourHoursAgo);
+                // Filtrar historias recientes (últimas 12 horas)
+                const twelveHoursAgo = Date.now() - (12 * 60 * 60 * 1000);
+                const recentStories = result.stories.filter(story => story.timestamp > twelveHoursAgo);
+
+                // Eliminar historias viejas automáticamente
+                const oldStories = result.stories.filter(story => story.timestamp <= twelveHoursAgo);
+                oldStories.forEach(async (story) => {
+                    try {
+                        await fetch('/.netlify/functions/delete-story', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ storyId: story.id })
+                        });
+                        console.log(`Historia ${story.id} eliminada automáticamente (más de 12 horas)`);
+                    } catch (error) {
+                        console.error('Error eliminando historia antigua:', error);
+                    }
+                });
 
                 // Agrupar por usuario
                 const storiesByUser = {};
@@ -110,7 +127,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     storiesByUser[story.userId].push(story);
                 });
 
-                // Crear elementos de historias
+                // Crear elementos de historias en orden horizontal
                 for (const userId in storiesByUser) {
                     const userStories = storiesByUser[userId];
                     if (userStories.length > 0) {
@@ -251,7 +268,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            const stories = result.stories;
+            // Filtrar solo historias de las últimas 12 horas
+            const twelveHoursAgo = Date.now() - (12 * 60 * 60 * 1000);
+            const stories = result.stories.filter(story => story.timestamp > twelveHoursAgo);
+            
+            if (stories.length === 0) {
+                return;
+            }
             const storyContent = document.querySelector('.story-content');
             storyContent.innerHTML = '';
 
