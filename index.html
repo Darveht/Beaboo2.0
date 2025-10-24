@@ -6064,7 +6064,7 @@ function saveNote() {
 
   document.getElementById('support-description').addEventListener('input', updateCharCount);
 
-  document.getElementById('support-form').addEventListener('submit', e => {
+  document.getElementById('support-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     
     const email = document.getElementById('support-email').value;
@@ -6077,39 +6077,43 @@ function saveNote() {
     }
     
     const user = firebase.auth().currentUser;
-    if (!user) {
-      alert("Debes iniciar sesión para enviar una solicitud de soporte.");
-      return;
-    }
-    
-    const supportData = {
-      userId: user.uid,
-      email,
-      problemType,
-      description,
-      timestamp: Date.now(),
-      status: "pending"
-    };
     
     const btn = document.getElementById('btn-send-support');
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Enviando...';
     
-    firebase.database().ref('supportRequests').push(supportData)
-      .then(() => {
-        document.getElementById('support-form-container').classList.add('hidden');
-        document.getElementById('support-success-message').classList.remove('hidden');
-        
-        document.getElementById('support-form').reset();
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-paper-plane mr-2"></i>Enviar Solicitud de Soporte';
-      })
-      .catch(error => {
-        console.error("Error al enviar solicitud de soporte:", error);
-        alert("❌ Hubo un error al enviar tu solicitud. Por favor, intenta nuevamente.");
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-paper-plane mr-2"></i>Enviar Solicitud de Soporte';
+    try {
+      const response = await fetch('/.netlify/functions/send-support-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          problemType,
+          description,
+          userId: user ? user.uid : null
+        })
       });
+
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || 'Error al enviar solicitud');
+      }
+      
+      document.getElementById('support-form-container').classList.add('hidden');
+      document.getElementById('support-success-message').classList.remove('hidden');
+      
+      document.getElementById('support-form').reset();
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-paper-plane mr-2"></i>Enviar Solicitud de Soporte';
+    } catch (error) {
+      console.error("Error al enviar solicitud de soporte:", error);
+      alert("❌ Hubo un error al enviar tu solicitud. Por favor, intenta nuevamente.");
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-paper-plane mr-2"></i>Enviar Solicitud de Soporte';
+    }
   });
   /*********************** NAVEGACIÓN Y MODALES **************************/
   function openStoryDetail(story) {
