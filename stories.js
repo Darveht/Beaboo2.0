@@ -173,33 +173,49 @@ document.addEventListener('DOMContentLoaded', () => {
             }, 
             () => {
                 progressText.textContent = 'Procesando...';
-                uploadTask.snapshot.ref.getDownloadURL()
-                    .then((downloadURL) => {
-                        const storyData = {
-                            imageUrl: downloadURL,
-                            timestamp: firebase.database.ServerValue.TIMESTAMP,
-                            views: 0
-                        };
-                        return database.ref(`stories/${userId}`).push(storyData);
-                    })
-                    .then(() => {
-                        progressText.textContent = '¡Historia subida!';
-                        setTimeout(() => {
-                            storyUploadModal.classList.remove('active');
-                            resetUploadForm();
+                
+                // Convertir la imagen a base64
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const base64Image = e.target.result;
+                    
+                    // Guardar en Realtime Database con base64
+                    const storyData = {
+                        imageUrl: base64Image,
+                        timestamp: Date.now(),
+                        views: 0,
+                        userId: userId
+                    };
+                    
+                    database.ref(`stories/${userId}`).push(storyData)
+                        .then(() => {
+                            progressText.textContent = '¡Historia subida!';
+                            setTimeout(() => {
+                                storyUploadModal.classList.remove('active');
+                                resetUploadForm();
+                                submitBtn.disabled = false;
+                                submitBtn.textContent = 'Subir Historia';
+                                loadStories();
+                            }, 500);
+                        })
+                        .catch((error) => {
+                            console.error("Error al guardar en la base de datos:", error);
+                            alert('Error al guardar la historia. Por favor intenta de nuevo. Error: ' + error.message);
                             submitBtn.disabled = false;
                             submitBtn.textContent = 'Subir Historia';
-                            loadStories();
-                        }, 500);
-                    })
-                    .catch((error) => {
-                        console.error("Error al guardar en la base de datos:", error);
-                        alert('Error al guardar la historia. Por favor intenta de nuevo. Error: ' + error.message);
-                        submitBtn.disabled = false;
-                        submitBtn.textContent = 'Subir Historia';
-                        progressDiv.style.display = 'none';
-                        progressBar.style.width = '0%';
-                    });
+                            progressDiv.style.display = 'none';
+                            progressBar.style.width = '0%';
+                        });
+                };
+                
+                reader.onerror = (error) => {
+                    console.error("Error al convertir imagen:", error);
+                    alert('Error al procesar la imagen');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Subir Historia';
+                };
+                
+                reader.readAsDataURL(file);
             }
         );
     }
