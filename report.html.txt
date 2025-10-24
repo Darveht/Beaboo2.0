@@ -1,0 +1,164 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reportar - BeaBoo</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+  <style>
+    body {
+      font-family: 'Nunito', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-0">
+  <div class="w-full h-full min-h-screen">
+    <div id="form-container" class="bg-white h-full min-h-screen p-8">
+      <div class="flex items-center mb-6">
+        <a href="index.html" class="text-gray-600 hover:text-[#FE2C55] transition-colors mr-4">
+          <i class="fas fa-arrow-left text-2xl"></i>
+        </a>
+        <h1 class="text-3xl font-bold text-[#FE2C55]">Reportar Contenido</h1>
+      </div>
+      
+      <p class="text-gray-600 mb-6">
+        Si has encontrado algo que va en contra de nuestras normas de la comunidad, por favor cuéntanos qué sucedió.
+      </p>
+
+      <form id="report-form" class="space-y-6">
+        <div>
+          <label for="problem-description" class="block text-gray-700 font-semibold mb-2">
+            Describe el problema <span class="text-red-500">*</span>
+          </label>
+          <textarea 
+            id="problem-description" 
+            name="problem-description"
+            rows="6" 
+            required
+            class="w-full p-4 border-2 border-gray-200 rounded-xl focus:border-[#FE2C55] focus:outline-none transition-colors resize-none"
+            placeholder="Por favor, describe detalladamente qué encontraste inapropiado o problemático..."
+          ></textarea>
+        </div>
+
+        <div class="bg-gray-50 p-4 rounded-xl">
+          <label class="flex items-start cursor-pointer">
+            <input 
+              type="checkbox" 
+              id="confirm-report" 
+              name="confirm-report"
+              required
+              class="mt-1 w-5 h-5 text-[#FE2C55] border-gray-300 rounded focus:ring-[#FE2C55] cursor-pointer"
+            />
+            <span class="ml-3 text-gray-700">
+              Confirmo que la información proporcionada es verídica y entiendo que los reportes falsos pueden tener consecuencias. <span class="text-red-500">*</span>
+            </span>
+          </label>
+        </div>
+
+        <button 
+          type="submit" 
+          class="w-full bg-[#FE2C55] text-white font-bold py-4 rounded-xl hover:bg-[#e02849] transition-colors shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98] duration-200"
+        >
+          <i class="fas fa-paper-plane mr-2"></i>
+          Enviar Reporte
+        </button>
+      </form>
+    </div>
+
+    <div id="success-message" class="bg-white h-full min-h-screen p-8 hidden">
+      <div class="text-center">
+        <div class="mb-6">
+          <div class="mx-auto w-20 h-20 bg-green-100 rounded-full flex items-center justify-center">
+            <i class="fas fa-check-circle text-green-500 text-5xl"></i>
+          </div>
+        </div>
+        
+        <h2 class="text-3xl font-bold text-gray-800 mb-4">¡Gracias por tu reporte!</h2>
+        
+        <p class="text-gray-600 mb-6 text-lg">
+          Lo revisaremos cuidadosamente y tomaremos las medidas necesarias.
+        </p>
+        
+        <p class="text-gray-500 mb-8">
+          Tu colaboración nos ayuda a mantener una comunidad segura y respetuosa para todos.
+        </p>
+
+        <a 
+          href="index.html" 
+          class="inline-block bg-[#FE2C55] text-white font-bold py-3 px-8 rounded-xl hover:bg-[#e02849] transition-colors shadow-lg"
+        >
+          <i class="fas fa-home mr-2"></i>
+          Volver al inicio
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBz9nq3MqHu1HkMwh0OqZt0xLChtU5xhNo",
+      authDomain: "beaboo-b21c7.firebaseapp.com",
+      databaseURL: "https://beaboo-b21c7-default-rtdb.firebaseio.com",
+      projectId: "beaboo-b21c7",
+      storageBucket: "beaboo-b21c7.firebasestorage.app",
+      messagingSenderId: "752527036530",
+      appId: "1:752527036530:web:43d2b98c892ba1e55ad8c7"
+    };
+
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+      const formContainer = document.getElementById('form-container');
+      const successMessage = document.getElementById('success-message');
+      const reportForm = document.getElementById('report-form');
+
+      if (reportForm) {
+        reportForm.addEventListener('submit', async function(e) {
+          e.preventDefault();
+
+          const description = document.getElementById('problem-description').value;
+          const confirmed = document.getElementById('confirm-report').checked;
+
+          if (!description.trim()) {
+            alert('Por favor, describe el problema.');
+            return;
+          }
+
+          if (!confirmed) {
+            alert('Debes confirmar que la información es verídica.');
+            return;
+          }
+
+          const user = firebase.auth().currentUser;
+          const reportData = {
+            description: description,
+            timestamp: Date.now(),
+            reporter: user ? user.uid : 'anonymous',
+            reporterEmail: user ? user.email : 'anonymous'
+          };
+
+          try {
+            await firebase.database().ref('reports').push(reportData);
+            
+            formContainer.classList.add('hidden');
+            successMessage.classList.remove('hidden');
+          } catch (error) {
+            console.error('Error al enviar el reporte:', error);
+            alert('Hubo un error al enviar tu reporte. Por favor, intenta de nuevo.');
+          }
+        });
+      }
+    });
+  </script>
+</body>
+</html>
