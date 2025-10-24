@@ -128,11 +128,15 @@ document.addEventListener('DOMContentLoaded', () => {
     function createStoryElement(storyData, userId) {
         const storyDiv = document.createElement('div');
         storyDiv.className = 'story';
+        
+        // Usar username en lugar de email
+        const displayName = storyData.username || 'Usuario';
+        
         storyDiv.innerHTML = `
             <div class="image-container">
-                <img src="${storyData.coverImage || 'https://via.placeholder.com/150'}" alt="${storyData.username}">
+                <img src="${storyData.coverImage || 'https://via.placeholder.com/150'}" alt="${displayName}">
             </div>
-            <div class="username">${storyData.username}</div>
+            <div class="username">${displayName}</div>
         `;
         storyDiv.addEventListener('click', () => openStoryViewer(userId));
         return storyDiv;
@@ -275,20 +279,30 @@ document.addEventListener('DOMContentLoaded', () => {
                     }).catch(err => console.error('Error updating views:', err));
                 }
 
+                const displayName = story.username || 'Usuario';
+                
                 storyContent.innerHTML = `
                     <div class="story-header">
                         <div class="story-progress-container">
                             ${stories.map((_, i) => `<div class="story-progress"><div class="story-progress-bar" style="width: ${i < index ? '100%' : (i === index ? '0%' : '0%')}"></div></div>`).join('')}
                         </div>
                         <div class="story-user-info">
-                            <img src="${story.coverImage || 'https://via.placeholder.com/150'}" alt="${story.username}">
-                            <span class="username">${story.username}</span>
+                            <img src="${story.coverImage || 'https://via.placeholder.com/150'}" alt="${displayName}">
+                            <span class="username">${displayName}</span>
                         </div>
-                        ${currentUser && currentUser.uid === userId ? `<div class="story-options" data-story-id="${story.id}">&hellip;</div>` : ''}
+                        ${currentUser && currentUser.uid === userId ? `
+                            <div class="story-options" data-story-id="${story.id}">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+                                    <circle cx="12" cy="5" r="2"/>
+                                    <circle cx="12" cy="12" r="2"/>
+                                    <circle cx="12" cy="19" r="2"/>
+                                </svg>
+                            </div>
+                        ` : ''}
                     </div>
                     <img src="${story.coverImage}" class="story-image">
                     <div class="story-footer">
-                        <div class="story-views">${story.views || 0} views</div>
+                        <div class="story-views">${story.views || 0} vistas</div>
                     </div>
                 `;
 
@@ -297,14 +311,48 @@ document.addEventListener('DOMContentLoaded', () => {
                     progressBar.style.width = '100%';
                 }, 100);
 
-                // Agregar event listener para eliminar
+                // Agregar event listener para opciones
                 const optionsButton = storyContent.querySelector('.story-options');
                 if (optionsButton) {
                     optionsButton.addEventListener('click', (e) => {
-                        const storyIdToDelete = e.target.dataset.storyId;
-                        if (confirm("¿Estás seguro de que quieres eliminar esta historia?")) {
-                            deleteStory(storyIdToDelete);
+                        e.stopPropagation();
+                        const storyIdToDelete = e.currentTarget.dataset.storyId;
+                        
+                        // Crear menú de opciones
+                        const existingMenu = document.querySelector('.story-options-menu');
+                        if (existingMenu) {
+                            existingMenu.remove();
                         }
+                        
+                        const menu = document.createElement('div');
+                        menu.className = 'story-options-menu';
+                        menu.innerHTML = `
+                            <button class="delete-option">
+                                <i class="fas fa-trash"></i> Eliminar historia
+                            </button>
+                        `;
+                        
+                        const header = storyContent.querySelector('.story-header');
+                        header.appendChild(menu);
+                        
+                        // Event listener para eliminar
+                        menu.querySelector('.delete-option').addEventListener('click', async (e) => {
+                            e.stopPropagation();
+                            if (confirm("¿Estás seguro de que quieres eliminar esta historia?")) {
+                                menu.remove();
+                                await deleteStory(storyIdToDelete);
+                            }
+                        });
+                        
+                        // Cerrar menú al hacer click fuera
+                        setTimeout(() => {
+                            document.addEventListener('click', function closeMenu(e) {
+                                if (!menu.contains(e.target)) {
+                                    menu.remove();
+                                    document.removeEventListener('click', closeMenu);
+                                }
+                            });
+                        }, 100);
                     });
                 }
 

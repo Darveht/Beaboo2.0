@@ -8,11 +8,23 @@
 .stories {
     display: flex;
     gap: 16px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+}
+
+.stories::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
 }
 
 .story {
     cursor: pointer;
     text-align: center;
+    flex-shrink: 0; /* Evita que las historias se compriman */
+    min-width: 66px;
 }
 
 .story .image-container {
@@ -135,6 +147,19 @@
     color: #fff;
     font-size: 24px;
     cursor: pointer;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.story-close:hover, .story-options:hover {
+    background: rgba(254, 44, 85, 0.8);
+    transform: scale(1.1);
 }
 
 .story-image {
@@ -157,6 +182,42 @@
 
 .story-views {
     color: #fff;
+}
+
+.story-options-menu {
+    position: absolute;
+    top: 60px;
+    right: 16px;
+    background: rgba(0, 0, 0, 0.9);
+    border-radius: 8px;
+    padding: 8px;
+    min-width: 150px;
+    z-index: 100;
+}
+
+.story-options-menu button {
+    width: 100%;
+    padding: 12px;
+    background: transparent;
+    color: #fff;
+    border: none;
+    text-align: left;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background 0.2s;
+    font-size: 14px;
+}
+
+.story-options-menu button:hover {
+    background: rgba(254, 44, 85, 0.3);
+}
+
+.story-options-menu button.delete-option {
+    color: #ff4444;
+}
+
+.story-options-menu button.delete-option:hover {
+    background: rgba(255, 68, 68, 0.2);
 }
 
 #story-upload-modal {
