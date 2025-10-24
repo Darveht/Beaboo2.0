@@ -1030,6 +1030,7 @@ setInterval(checkScheduledChapters, 60000);
       cursor: pointer;
     }
   </style>
+  <link rel="stylesheet" href="stories.css">
   <script>
     /*********************** BLOQUEO DE ACCESO EN COMPUTADORAS (Móvil obligatorio) ***********************/
     function esDispositivoMovil() {
@@ -1894,6 +1895,21 @@ setInterval(checkScheduledChapters, 60000);
 </section>
 
 
+
+<!-- Historias -->
+    <section class="stories-container">
+        <div class="stories">
+            <div class="story add-story" id="add-story-btn">
+                <div class="image-container">
+                    <i class="fas fa-plus"></i>
+                </div>
+                <div class="username">Add Story</div>
+            </div>
+            <div id="stories">
+                <!-- Las historias se cargarán aquí -->
+            </div>
+        </div>
+    </section>
 
 <section id="new-releases-section" class="mb-10">
       <div class="flex justify-between items-center mb-4">
@@ -10107,3 +10123,46 @@ function closeBeabooStudio() {
 </script>
 
 </body>
+
+<!-- Story Viewer Modal -->
+<div id="story-viewer">
+    <div class="story-content">
+        <!-- Story content will be loaded here -->
+    </div>
+    <button id="story-viewer-close" class="story-close">&times;</button>
+</div>
+
+<!-- Story Upload Modal -->
+<div id="story-upload-modal">
+    <div class="story-upload-content">
+        <h2>Upload Story</h2>
+        <form id="story-upload-form">
+            <input type="file" id="story-file" accept="image/*" required>
+            <button type="submit">Upload</button>
+        </form>
+        <button id="story-upload-close">Close</button>
+    </div>
+</div>
+
+<!-- Story Viewer Modal -->
+<div id="story-viewer">
+    <div class="story-content"></div>
+    <span class="story-close" id="story-viewer-close">&times;</span>
+</div>
+
+<!-- Story Upload Modal -->
+<div id="story-upload-modal">
+    <div class="story-upload-content">
+        <h2>Upload Story</h2>
+        <form id="story-upload-form">
+            <input type="file" id="story-file" accept="image/*" required>
+            <button type="submit">Upload</button>
+        </form>
+        <span class="story-close" id="story-upload-close">&times;</span>
+    </div>
+</div>
+
+<script src="stories.js"></script>
+</body>
+</html>
+
