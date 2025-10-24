@@ -129,8 +129,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const storyDiv = document.createElement('div');
         storyDiv.className = 'story';
         
-        // Usar username en lugar de email
-        const displayName = storyData.username || 'Usuario';
+        // Usar username, nunca email
+        const displayName = storyData.username || storyData.email?.split('@')[0] || 'Usuario';
         
         storyDiv.innerHTML = `
             <div class="image-container">
@@ -279,7 +279,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     }).catch(err => console.error('Error updating views:', err));
                 }
 
-                const displayName = story.username || 'Usuario';
+                // Usar username, nunca email
+                const displayName = story.username || story.email?.split('@')[0] || 'Usuario';
                 
                 storyContent.innerHTML = `
                     <div class="story-header">
@@ -287,18 +288,17 @@ document.addEventListener('DOMContentLoaded', () => {
                             ${stories.map((_, i) => `<div class="story-progress"><div class="story-progress-bar" style="width: ${i < index ? '100%' : (i === index ? '0%' : '0%')}"></div></div>`).join('')}
                         </div>
                         <div class="story-user-info">
-                            <img src="${story.coverImage || 'https://via.placeholder.com/150'}" alt="${displayName}">
                             <span class="username">${displayName}</span>
+                            ${currentUser && currentUser.uid === userId ? `
+                                <div class="story-options" data-story-id="${story.id}">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+                                        <circle cx="12" cy="5" r="2"/>
+                                        <circle cx="12" cy="12" r="2"/>
+                                        <circle cx="12" cy="19" r="2"/>
+                                    </svg>
+                                </div>
+                            ` : ''}
                         </div>
-                        ${currentUser && currentUser.uid === userId ? `
-                            <div class="story-options" data-story-id="${story.id}">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
-                                    <circle cx="12" cy="5" r="2"/>
-                                    <circle cx="12" cy="12" r="2"/>
-                                    <circle cx="12" cy="19" r="2"/>
-                                </svg>
-                            </div>
-                        ` : ''}
                     </div>
                     <img src="${story.coverImage}" class="story-image">
                     <div class="story-footer">
