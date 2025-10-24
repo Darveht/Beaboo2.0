@@ -51,14 +51,14 @@ console.log('%cEste sitio está protegido contra inspección de código.', 'font
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Font Awesome CDN -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-pap6t+K2bD6xIxQqkQ3sM8e+RXw7C3DyrgXV++o2aL/88+/9kS/l+SmpD8zZR1oN40Nq3QfT7HigDYfFW1zZAQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-  <!-- Google Translate -->
+  <!-- Google Translate (Completamente invisible y automático) -->
   <script type="text/javascript">
     function googleTranslateElementInit() {
       new google.translate.TranslateElement({
         pageLanguage: 'es',
         includedLanguages: 'en,es,pt,fr,de,it,ja,ko,zh-CN,zh-TW,ar,hi,ru,tr,vi,th,id,pl,nl,sv,no,da,fi,el,he,uk,cs,ro,hu,bg,hr,sk,sl,lt,lv,et',
         layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
-        autoDisplay: true,
+        autoDisplay: false,
         multilanguagePage: true
       }, 'google_translate_element');
       
@@ -80,29 +80,48 @@ console.log('%cEste sitio está protegido contra inspección de código.', 'font
   </script>
   <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
   <style>
-    /* Ocultar el banner superior de Google Translate */
+    /* Ocultar COMPLETAMENTE todos los elementos de Google Translate */
     .goog-te-banner-frame.skiptranslate {
+      display: none !important;
+    }
+    .goog-te-banner-frame {
       display: none !important;
     }
     body {
       top: 0px !important;
     }
-    /* Estilizar el selector de idioma */
+    /* Ocultar el widget de Google Translate completamente */
     #google_translate_element {
-      position: fixed;
-      top: 10px;
-      right: 10px;
-      z-index: 9999;
-      background: white;
-      padding: 5px;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      display: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+      position: absolute !important;
+      left: -9999px !important;
     }
-    #google_translate_element select {
-      border: none;
-      background: transparent;
-      padding: 5px;
-      font-size: 14px;
+    .goog-te-gadget {
+      display: none !important;
+    }
+    .goog-te-combo {
+      display: none !important;
+    }
+    /* Ocultar el logo de Google Translate */
+    .goog-logo-link {
+      display: none !important;
+    }
+    .goog-te-gadget-simple {
+      display: none !important;
+    }
+    /* Ocultar el iframe de Google Translate */
+    iframe.goog-te-banner-frame {
+      display: none !important;
+    }
+    /* Asegurar que no aparezca nada de Google */
+    .skiptranslate {
+      display: none !important;
+    }
+    /* Ocultar cualquier elemento con el atributo translate */
+    [translate="no"] {
+      display: inline !important;
     }
   </style>
   <!-- Firebase (compat) -->
@@ -1845,8 +1864,8 @@ setInterval(checkScheduledChapters, 60000);
 
 <body class="bg-white font-sans text-[#161823]">
   
-  <!-- Google Translate Selector -->
-  <div id="google_translate_element"></div>
+  <!-- Google Translate (oculto) -->
+  <div id="google_translate_element" style="display:none !important; visibility:hidden !important; position:absolute; left:-9999px;"></div>
   
   <div id="auth-form" class="w-full h-screen flex flex-col justify-center p-6">
     <!-- Centered title -->
