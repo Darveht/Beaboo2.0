@@ -17,9 +17,9 @@ exports.handler = async (event) => {
   }
 
   try {
-    const { imageData, fileName, userId, timestamp, contentType } = JSON.parse(event.body);
+    const { imageData, fileName, userId, timestamp, contentType, imageType = 'stories' } = JSON.parse(event.body);
 
-    if (!imageData || !fileName || !userId || !timestamp) {
+    if (!imageData || !fileName || !userId) {
       return {
         statusCode: 400,
         body: JSON.stringify({ error: 'Missing required fields' }),
@@ -29,7 +29,9 @@ exports.handler = async (event) => {
     const base64Data = imageData.replace(/^data:image\/\w+;base64,/, '');
     const buffer = Buffer.from(base64Data, 'base64');
 
-    const key = `stories/${userId}/${timestamp}_${fileName}`;
+    const key = imageType === 'profile' 
+      ? `profileImages/${userId}/${timestamp || Date.now()}_${fileName}`
+      : `stories/${userId}/${timestamp}_${fileName}`;
 
     const command = new PutObjectCommand({
       Bucket: process.env.MY_AWS_S3_BUCKET_NAME || 'libros-de-glam-2025',

@@ -2803,27 +2803,56 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 });
 
-function handleProfileImageUploadDesktop(event) {
+async function handleProfileImageUploadDesktop(event) {
   const file = event.target.files[0];
   if (!file) return;
-  const reader = new FileReader();
-  
-  reader.onload = function(e) {
-    document.getElementById('profile-image-desktop').src = e.target.result;
-    // También actualizar la imagen móvil
-    document.getElementById('profile-image').src = e.target.result;
-    
-    // Guardar en Firebase
-    const user = firebase.auth().currentUser;
-    if (user) {
-      firebase.database().ref('users/' + user.uid).update({
-        profileImage: e.target.result
+  const user = firebase.auth().currentUser;
+  if (!user) return;
+
+  try {
+    const reader = new FileReader();
+    reader.onload = async function(e) {
+      const base64String = e.target.result;
+      const timestamp = Date.now();
+
+      const response = await fetch('/.netlify/functions/upload-image', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          imageData: base64String,
+          fileName: file.name,
+          userId: user.uid,
+          timestamp: timestamp,
+          contentType: file.type,
+          imageType: 'profile'
+        })
       });
-    }
-  }
-  
-  if (file) {
+
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || 'Error al subir imagen');
+      }
+
+      document.getElementById('profile-image-desktop').src = result.imageUrl;
+      document.getElementById('profile-image').src = result.imageUrl;
+      
+      await firebase.database().ref('users/' + user.uid).update({
+        profileImage: result.imageUrl
+      });
+    };
+    
+    reader.onerror = (error) => {
+      console.error("Error al convertir la imagen a base64:", error);
+      alert('Error al procesar la imagen');
+    };
+    
     reader.readAsDataURL(file);
+  } catch (error) {
+    console.error("Error al subir imagen de perfil:", error);
+    alert('Error al subir la imagen de perfil');
   }
 }
 </script>
@@ -4940,7 +4969,7 @@ function openPhotoDetail(photo) {
     document.getElementById('preview-img').src = '';
   }
 
-  function publishNote() {
+  async function publishNote() {
     const content = document.getElementById('note-content').value.trim();
     const imageInput = document.getElementById('note-image');
     
@@ -4955,12 +4984,12 @@ function openPhotoDetail(photo) {
       return;
     }
 
-    // 显示加载指示器
     const publishButton = document.querySelector('button[onclick="publishNote()"]');
     publishButton.disabled = true;
     publishButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 发布中...';
 
-    firebase.database().ref('users/' + user.uid).once('value').then(snapshot => {
+    try {
+      const snapshot = await firebase.database().ref('users/' + user.uid).once('value');
       const userData = snapshot.val();
       const note = {
         content: content,
@@ -4973,40 +5002,63 @@ function openPhotoDetail(photo) {
 
       if (imageInput.files.length > 0) {
         const reader = new FileReader();
-        reader.onload = function(e) {
-          note.imageUrl = e.target.result;
-          firebase.database().ref('communityNotes').push(note).then(() => {
-            document.getElementById('note-content').value = '';
-            imageInput.value = '';
-            document.getElementById('image-preview').classList.add('hidden');
-            switchCommunityTab('feed');
-            publishButton.disabled = false;
-            publishButton.innerHTML = '发布笔记';
-            alert('笔记发布成功！');
-          }).catch(error => {
-            console.error('发布错误:', error);
-            alert('发布笔记时出错。请重试。');
-            publishButton.disabled = false;
-            publishButton.innerHTML = '发布笔记';
+        reader.onload = async function(e) {
+          const base64String = e.target.result;
+          const timestamp = Date.now();
+
+          const response = await fetch('/.netlify/functions/upload-image', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              imageData: base64String,
+              fileName: imageInput.files[0].name,
+              userId: user.uid,
+              timestamp: timestamp,
+              contentType: imageInput.files[0].type,
+              imageType: 'notes'
+            })
           });
-        };
-        reader.readAsDataURL(imageInput.files[0]);
-      } else {
-        firebase.database().ref('communityNotes').push(note).then(() => {
+
+          const result = await response.json();
+          
+          if (!response.ok) {
+            throw new Error(result.error || 'Error al subir imagen');
+          }
+
+          note.imageUrl = result.imageUrl;
+          await firebase.database().ref('communityNotes').push(note);
+          
           document.getElementById('note-content').value = '';
+          imageInput.value = '';
+          document.getElementById('image-preview').classList.add('hidden');
           switchCommunityTab('feed');
           publishButton.disabled = false;
           publishButton.innerHTML = '发布笔记';
-          
           alert('笔记发布成功！');
-        }).catch(error => {
+        };
+        reader.onerror = (error) => {
           console.error('发布错误:', error);
           alert('发布笔记时出错。请重试。');
           publishButton.disabled = false;
           publishButton.innerHTML = '发布笔记';
-        });
+        };
+        reader.readAsDataURL(imageInput.files[0]);
+      } else {
+        await firebase.database().ref('communityNotes').push(note);
+        document.getElementById('note-content').value = '';
+        switchCommunityTab('feed');
+        publishButton.disabled = false;
+        publishButton.innerHTML = '发布笔记';
+        alert('笔记发布成功！');
       }
-    });
+    } catch (error) {
+      console.error('发布错误:', error);
+      alert('发布笔记时出错。请重试。');
+      publishButton.disabled = false;
+      publishButton.innerHTML = '发布笔记';
+    }
   }
 
   function publishNoteToDatabase(note) {
@@ -6339,31 +6391,44 @@ document.getElementById('category-filter').addEventListener('change', performRea
     document.getElementById('profile-image-input').click();
   }
 
-  function handleProfileImageUpload(event) {
+  async function handleProfileImageUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      // El resultado ya trae el prefijo 'data:image/jpeg;base64,...' o 'data:image/png;base64,...'
-      const base64String = e.target.result;
-      const user = firebase.auth().currentUser;
-      if (!user) return;
-      // Guardamos la imagen en base64 en la Realtime Database
-      firebase.database().ref('users/' + user.uid).update({
-          profileImage: base64String
-        })
-        .then(() => {
-          document.getElementById('profile-image').src = base64String;
-        })
-        .catch(error => {
-          console.error("Error al guardar la imagen en la base de datos:", error);
+    const user = firebase.auth().currentUser;
+    if (!user) return;
+
+    try {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const base64String = e.target.result;
+        const timestamp = Date.now();
+
+        const response = await fetch('/.netlify/functions/upload-image', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            imageData: base64String,
+            fileName: file.name,
+            userId: user.uid,
+            timestamp: timestamp,
+            contentType: file.type,
+            imageType: 'profile'
+          })
         });
-    };
-    reader.onerror = (error) => {
-      console.error("Error al convertir la imagen a base64:", error);
-    };
-    // Convertimos el archivo a Data URL (base64)
-    reader.readAsDataURL(file);
+      };
+      
+      reader.onerror = (error) => {
+        console.error("Error al convertir la imagen a base64:", error);
+        alert('Error al procesar la imagen');
+      };
+      
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error("Error al subir imagen de perfil:", error);
+      alert('Error al subir la imagen de perfil');
+    }
   }
 
   function editUsername() {
@@ -6606,24 +6671,52 @@ document.getElementById('category-filter').addEventListener('change', performRea
     document.getElementById('edit-profile-image-input').click();
   }
 
-  function handleEditProfileImageUpload(event) {
+  async function handleEditProfileImageUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
     const user = firebase.auth().currentUser;
     if (!user) return;
-    const storageRef = firebase.storage().ref();
-    const imageRef = storageRef.child('profileImages/' + user.uid + '/' + file.name);
-    const uploadTask = imageRef.put(file);
-    uploadTask.on('state_changed', null, error => {
-      console.error("Error al subir la imagen (edición):", error);
-    }, () => {
-      uploadTask.snapshot.ref.getDownloadURL().then(downloadURL => {
-        firebase.database().ref('users/' + user.uid).update({
-          profileImage: downloadURL
+
+    try {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const base64String = e.target.result;
+        const timestamp = Date.now();
+
+        const response = await fetch('/.netlify/functions/upload-image', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            imageData: base64String,
+            fileName: file.name,
+            userId: user.uid,
+            timestamp: timestamp,
+            contentType: file.type,
+            imageType: 'profile'
+          })
         });
-        document.getElementById('edit-profile-image').src = downloadURL;
-      });
-    });
+        const editProfileImageMobile = document.getElementById('edit-profile-image-mobile');
+        if (editProfileImageMobile) {
+          editProfileImageMobile.src = result.imageUrl;
+        }
+        const editProfileImageDesktop = document.getElementById('edit-profile-image-desktop');
+        if (editProfileImageDesktop) {
+          editProfileImageDesktop.src = result.imageUrl;
+        }
+      };
+      
+      reader.onerror = (error) => {
+        console.error("Error al convertir la imagen a base64:", error);
+        alert('Error al procesar la imagen');
+      };
+      
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error("Error al subir imagen de perfil (edición):", error);
+      alert('Error al subir la imagen de perfil');
+    }
   }
 
   // Función para conectar con TikTok
@@ -9101,46 +9194,79 @@ document.getElementById('category-filter').addEventListener('change', performRea
     document.getElementById('file-input').click();
   }
 
-  function handleFileAttachment(event) {
+  async function handleFileAttachment(event) {
     const file = event.target.files[0];
     if (!file) return;
 
-    if (file.size > 5 * 1024 * 1024) { // 5MB límite
+    if (file.size > 5 * 1024 * 1024) {
       alert('El archivo es muy grande. Máximo 5MB.');
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      const user = firebase.auth().currentUser;
-      const conversationId = [user.uid, currentChatUserId].sort().join('_');
+    const user = firebase.auth().currentUser;
+    const conversationId = [user.uid, currentChatUserId].sort().join('_');
+
+    try {
+      const reader = new FileReader();
+      reader.onload = async function(e) {
+        const base64String = e.target.result;
+        const timestamp = Date.now();
+
+        const response = await fetch('/.netlify/functions/upload-image', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            imageData: base64String,
+            fileName: file.name,
+            userId: user.uid,
+            timestamp: timestamp,
+            contentType: file.type,
+            imageType: 'messages'
+          })
+        });
+
+        const result = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(result.error || 'Error al subir archivo');
+        }
+
+        const messageData = {
+          senderId: user.uid,
+          receiverId: currentChatUserId,
+          type: 'file',
+          fileName: file.name,
+          fileUrl: result.imageUrl,
+          timestamp: Date.now(),
+          read: false
+        };
+
+        firebase.database().ref('messages/' + conversationId).push(messageData);
+
+        const conversationUpdate = {
+          lastMessage: `📎 ${file.name}`,
+          lastMessageTime: Date.now()
+        };
+
+        firebase.database().ref('conversations/' + user.uid + '/' + currentChatUserId).update(conversationUpdate);
+        firebase.database().ref('conversations/' + currentChatUserId + '/' + user.uid).update({
+          ...conversationUpdate,
+          unreadCount: firebase.database.ServerValue.increment(1)
+        });
+      };
       
-      const messageData = {
-        senderId: user.uid,
-        receiverId: currentChatUserId,
-        type: 'file',
-        fileName: file.name,
-        fileUrl: e.target.result,
-        timestamp: Date.now(),
-        read: false
+      reader.onerror = (error) => {
+        console.error('Error al procesar archivo:', error);
+        alert('Error al procesar el archivo');
       };
-
-      firebase.database().ref('messages/' + conversationId).push(messageData);
-
-      // Actualizar conversaciones
-      const conversationUpdate = {
-        lastMessage: `📎 ${file.name}`,
-        lastMessageTime: Date.now()
-      };
-
-      firebase.database().ref('conversations/' + user.uid + '/' + currentChatUserId).update(conversationUpdate);
-      firebase.database().ref('conversations/' + currentChatUserId + '/' + user.uid).update({
-        ...conversationUpdate,
-        unreadCount: firebase.database.ServerValue.increment(1)
-      });
-    };
-    
-    reader.readAsDataURL(file);
+      
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error('Error al enviar archivo:', error);
+      alert('Error al enviar el archivo');
+    }
   }
 
   function toggleEmojiPicker() {
