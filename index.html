@@ -4253,29 +4253,30 @@ function saveNote() {
     <h2 class="text-xl font-bold mb-4 text-center text-white">Enviar Regalo</h2>
     <div class="gift-grid">
 
-function loadPhotos() {
+async function loadPhotos() {
   const photosFeed = document.getElementById('photos-feed');
   const photosContainer = photosFeed.querySelector('.grid');
   photosContainer.innerHTML = '';
 
-  firebase.database().ref('communityNotes').orderByChild('timestamp').once('value').then(snapshot => {
-    const photos = [];
-    snapshot.forEach(child => {
-      const note = child.val();
-      if (note.imageUrl) {
-        photos.push(note);
-      }
-    });
+  try {
+    const response = await fetch('/.netlify/functions/get-notes?limit=50');
+    const result = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(result.error || 'Error al cargar fotos');
+    }
 
-    photos.reverse().forEach(photo => {
+    const photos = (result.notes || []).filter(note => note.imageUrl);
+    
+    photos.forEach(photo => {
       const photoCard = document.createElement('div');
       photoCard.className = 'relative aspect-square cursor-pointer';
       photoCard.innerHTML = `
-        <img src="${photo.imageUrl}" alt="" class="w-full h-full object-cover">
+        <img src="${photo.imageUrl || ''}" alt="" class="w-full h-full object-cover">
         <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2">
           <div class="flex items-center">
-            <img src="${photo.authorImage}" alt="${photo.authorName}" class="w-6 h-6 rounded-full mr-2">
-            <span class="text-white text-sm truncate">${photo.authorName}</span>
+            <img src="${photo.authorImage || 'https://via.placeholder.com/150'}" alt="${photo.authorName || 'Usuario'}" class="w-6 h-6 rounded-full mr-2">
+            <span class="text-white text-sm truncate">${photo.authorName || 'Usuario'}</span>
           </div>
         </div>
       `;
@@ -4284,7 +4285,10 @@ function loadPhotos() {
       };
       photosContainer.appendChild(photoCard);
     });
-  });
+  } catch (error) {
+    console.error('Error loading photos:', error);
+    photosContainer.innerHTML = '<div class="col-span-2 text-center text-gray-500 py-8">Error al cargar fotos</div>';
+  }
 }
 
 function openPhotoDetail(photo) {
@@ -4292,21 +4296,21 @@ function openPhotoDetail(photo) {
   modal.className = 'fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4';
   modal.innerHTML = `
     <div class="max-w-2xl w-full bg-white rounded-xl overflow-hidden">
-      <img src="${photo.imageUrl}" alt="" class="w-full h-auto">
+      <img src="${photo.imageUrl || ''}" alt="" class="w-full h-auto">
       <div class="p-4">
         <div class="flex items-center mb-4">
-          <img src="${photo.authorImage}" alt="${photo.authorName}" class="w-8 h-8 rounded-full mr-2">
-          <span class="font-bold">${photo.authorName}</span>
+          <img src="${photo.authorImage || 'https://via.placeholder.com/150'}" alt="${photo.authorName || 'Usuario'}" class="w-8 h-8 rounded-full mr-2">
+          <span class="font-bold">${photo.authorName || 'Usuario'}</span>
         </div>
         ${photo.content ? `<p class="text-gray-700">${photo.content}</p>` : ''}
         <div class="mt-4 flex items-center justify-between">
           <div class="flex items-center space-x-4">
-            <button onclick="likePhoto('${photo.id}')" class="flex items-center text-gray-600">
+            <button onclick="likePhoto('${photo.id || ''}')" class="flex items-center text-gray-600">
               <i class="fas fa-heart mr-1"></i>
               <span>${photo.likes || 0}</span>
             </button>
           </div>
-          <span class="text-gray-500 text-sm">${new Date(photo.timestamp).toLocaleDateString()}</span>
+          <span class="text-gray-500 text-sm">${new Date(photo.timestamp || Date.now()).toLocaleDateString()}</span>
         </div>
       </div>
     </div>
