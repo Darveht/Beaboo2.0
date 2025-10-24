@@ -33,13 +33,48 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('story-upload-close').addEventListener('click', () => {
         storyUploadModal.classList.remove('active');
+        resetUploadForm();
     });
+
+    document.getElementById('story-file').addEventListener('change', handleFileSelect);
 
     document.getElementById('story-upload-form').addEventListener('submit', handleStoryUpload);
     document.getElementById('story-viewer-close').addEventListener('click', closeStoryViewer);
 
     // Load stories
     loadStories();
+
+    function handleFileSelect(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const preview = document.querySelector('.story-upload-preview');
+                const previewImg = preview.querySelector('img');
+                previewImg.src = event.target.result;
+                preview.style.display = 'block';
+                
+                const fileLabel = document.querySelector('.file-input-label');
+                fileLabel.style.display = 'none';
+            };
+            reader.readAsDataURL(file);
+        }
+    }
+
+    function resetUploadForm() {
+        document.getElementById('story-upload-form').reset();
+        const preview = document.querySelector('.story-upload-preview');
+        preview.style.display = 'none';
+        const fileLabel = document.querySelector('.file-input-label');
+        fileLabel.style.display = 'flex';
+        
+        const progressDiv = document.querySelector('.upload-progress');
+        if (progressDiv) {
+            progressDiv.style.display = 'none';
+            const progressBar = progressDiv.querySelector('.progress-bar');
+            progressBar.style.width = '0%';
+        }
+    }
 
     function loadStories() {
         const currentUser = auth.currentUser;
@@ -97,13 +132,25 @@ document.addEventListener('DOMContentLoaded', () => {
     function handleStoryUpload(e) {
         e.preventDefault();
         const file = document.getElementById('story-file').files[0];
-        if (!file) return;
+        if (!file) {
+            alert('Por favor selecciona una imagen');
+            return;
+        }
 
         const currentUser = auth.currentUser;
         if (!currentUser) {
-            alert("You must be logged in to upload a story.");
+            alert("Debes iniciar sesión para subir una historia.");
             return;
         }
+
+        const submitBtn = e.target.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Subiendo...';
+
+        const progressDiv = document.querySelector('.upload-progress');
+        const progressBar = progressDiv.querySelector('.progress-bar');
+        const progressText = progressDiv.querySelector('.progress-text');
+        progressDiv.style.display = 'block';
 
         const userId = currentUser.uid;
         const storageRef = storage.ref(`stories/${userId}/${Date.now()}_${file.name}`);
@@ -111,10 +158,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
         uploadTask.on('state_changed', 
             (snapshot) => {
-                // Progress
+                const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                progressBar.style.width = progress + '%';
+                progressText.textContent = `Subiendo: ${Math.round(progress)}%`;
             }, 
             (error) => {
-                console.error("Upload failed:", error);
+                console.error("Error al subir:", error);
+                alert('Error al subir la imagen. Por favor intenta de nuevo.');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Subir Historia';
+                progressDiv.style.display = 'none';
             }, 
             () => {
                 uploadTask.snapshot.ref.getDownloadURL().then((downloadURL) => {
@@ -123,8 +176,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         timestamp: firebase.database.ServerValue.TIMESTAMP,
                         views: 0
                     };
-                    database.ref(`stories/${userId}`).push(storyData);
-                    storyUploadModal.classList.remove('active');
+                    database.ref(`stories/${userId}`).push(storyData).then(() => {
+                        storyUploadModal.classList.remove('active');
+                        resetUploadForm();
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = 'Subir Historia';
+                        loadStories();
+                    });
                 });
             }
         );

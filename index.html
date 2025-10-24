@@ -1903,7 +1903,7 @@ setInterval(checkScheduledChapters, 60000);
                 <div class="image-container">
                     <i class="fas fa-plus"></i>
                 </div>
-                <div class="username">Add Story</div>
+                <div class="username">Tu historia</div>
             </div>
             <div id="stories">
                 <!-- Las historias se cargarán aquí -->
@@ -10135,30 +10135,32 @@ function closeBeabooStudio() {
 <!-- Story Upload Modal -->
 <div id="story-upload-modal">
     <div class="story-upload-content">
-        <h2>Upload Story</h2>
+        <h2>Subir Historia</h2>
+        
+        <div class="story-upload-preview">
+            <img src="" alt="Preview">
+        </div>
+        
         <form id="story-upload-form">
-            <input type="file" id="story-file" accept="image/*" required>
-            <button type="submit">Upload</button>
+            <div class="file-input-wrapper">
+                <label for="story-file" class="file-input-label">
+                    <i class="fas fa-camera"></i>
+                    <span>Seleccionar imagen</span>
+                    <span class="file-hint">Toca para elegir de tu galería</span>
+                </label>
+                <input type="file" id="story-file" accept="image/*" required>
+            </div>
+            
+            <div class="upload-progress">
+                <div class="progress-bar-container">
+                    <div class="progress-bar"></div>
+                </div>
+                <div class="progress-text">Subiendo...</div>
+            </div>
+            
+            <button type="submit">Subir Historia</button>
         </form>
-        <button id="story-upload-close">Close</button>
-    </div>
-</div>
-
-<!-- Story Viewer Modal -->
-<div id="story-viewer">
-    <div class="story-content"></div>
-    <span class="story-close" id="story-viewer-close">&times;</span>
-</div>
-
-<!-- Story Upload Modal -->
-<div id="story-upload-modal">
-    <div class="story-upload-content">
-        <h2>Upload Story</h2>
-        <form id="story-upload-form">
-            <input type="file" id="story-file" accept="image/*" required>
-            <button type="submit">Upload</button>
-        </form>
-        <span class="story-close" id="story-upload-close">&times;</span>
+        <button id="story-upload-close">Cancelar</button>
     </div>
 </div>
 
