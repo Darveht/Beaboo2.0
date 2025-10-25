@@ -51,6 +51,29 @@ BeaBoo es una aplicación de redes sociales estilo Instagram/TikTok que permite 
 - Sistema de notificaciones
 - Sistema de reportes
 
+## Cambios Recientes (25 Oct 2025)
+
+### Modo Claro Permanente
+1. **Eliminada funcionalidad de modo oscuro/claro** - La aplicación ahora permanece en modo claro todo el tiempo
+2. **Función setLightTheme()** - Reemplaza la antigua setThemeBasedOnTime() que cambiaba según la hora
+3. **Fondos actualizados** - Todos los fondos oscuros convertidos a colores claros (#ffffff, #f9fafb)
+4. **Eliminadas clases dark:** - Todas las clases de Tailwind dark: fueron removidas del HTML
+5. **Colores de texto ajustados** - Texto oscuro (#374151, #262626) para legibilidad en fondos claros
+
+### Correcciones de Notificaciones para iPhone
+1. **requestFullscreen() eliminado** - Causaba bloqueo en iOS Safari, ahora removido
+2. **Eventos touch agregados** - addEventListener('touchend') para compatibilidad con iOS
+3. **Mejor manejo de permisos** - Solicitud de permisos de notificación mejorada con error handling
+4. **Timeout reducido** - De 300ms a 100ms para respuesta más rápida
+
+### Elementos Convertidos a Modo Claro
+- Modal de lectura de capítulos (#chapter-read-modal)
+- Gift drawer (#gift-drawer)
+- Live container (.live-container)
+- Story blocked modal (#story-blocked-modal)
+- Side buttons (.side-button) - texto oscuro para legibilidad
+- Barra de navegación inferior
+
 ## Cambios Recientes (24 Oct 2025)
 
 ### Sistema de Recomendaciones Mejorado
