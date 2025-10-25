@@ -1181,25 +1181,16 @@ setInterval(checkScheduledChapters, 60000);
     window.addEventListener('online', function() {
       location.reload();
     });
-    /* FUNCIÓN PARA ESTABLECER EL TEMA GLOBAL (día/noche) Y COLOR DE FUENTE */
-    function setThemeBasedOnTime() {
-      const hour = new Date().getHours();
-      let bg, fontColor;
-      if (hour >= 6 && hour < 18) {
-        bg = "#ffffff";
-        fontColor = "#58CC02";
-      } else {
-        bg = "#0d1b2a";
-        fontColor = "#58CC02";
-      }
+    /* TEMA PERMANENTE EN MODO CLARO */
+    function setLightTheme() {
+      const bg = "#ffffff";
+      const fontColor = "#000000";
       document.body.style.backgroundColor = bg;
       document.body.style.color = fontColor;
       updateSectionThemes(bg, fontColor);
       const bottomNav = document.getElementById('bottom-nav');
       if (bottomNav) {
-        bottomNav.style.backgroundColor = (hour >= 6 && hour < 18) ?
-          "rgba(255,255,255,0.8)" :
-          "rgba(13,27,42,0.8)";
+        bottomNav.style.backgroundColor = "rgba(255,255,255,0.9)";
       }
     }
 
@@ -1227,7 +1218,7 @@ setInterval(checkScheduledChapters, 60000);
         }
       });
     }
-    window.addEventListener('load', setThemeBasedOnTime);
+    window.addEventListener('load', setLightTheme);
     window.addEventListener('load', function() {
       if (window.innerWidth >= 1024) {
         document.body.classList.add('desktop');
@@ -5902,18 +5893,17 @@ function saveNote() {
   function openNotifications() {
     showLoader();
     setTimeout(() => {
-      if (document.documentElement.requestFullscreen) {
-        document.documentElement.requestFullscreen();
-      }
       const currentUser = firebase.auth().currentUser;
       if (!currentUser) {
         hideLoader();
         return;
       }
       
-      // Request notification permission if not granted
-      if (Notification.permission !== "granted") {
-        Notification.requestPermission();
+      // Request notification permission if not granted (only on supported platforms)
+      if ('Notification' in window && Notification.permission !== "granted" && Notification.permission !== "denied") {
+        Notification.requestPermission().catch(err => {
+          console.log('Notification permission error:', err);
+        });
       }
       
       document.getElementById('notifications-modal').classList.remove('hidden');
@@ -5945,20 +5935,28 @@ function saveNote() {
             </div>
           `;
           
-          // Mark as read when clicked
-          div.onclick = () => {
+          // Mark as read when clicked - compatible with touch devices
+          div.addEventListener('click', () => {
             if (!notification.read) {
               firebase.database().ref('notifications/' + currentUser.uid + '/' + child.key).update({
                 read: true
               });
             }
-          };
+          });
+          div.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            if (!notification.read) {
+              firebase.database().ref('notifications/' + currentUser.uid + '/' + child.key).update({
+                read: true
+              });
+            }
+          });
           
           notificationsList.appendChild(div);
         });
         hideLoader();
       });
-    }, 300);
+    }, 100);
   }
 
   function closeNotifications() {
