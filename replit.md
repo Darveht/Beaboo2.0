@@ -51,7 +51,31 @@ BeaBoo es una aplicación de redes sociales estilo Instagram/TikTok que permite 
 - Sistema de notificaciones
 - Sistema de reportes
 
-## Cambios Recientes (25 Oct 2025)
+## Cambios Recientes (25 Oct 2025 - Actualización de Tarde)
+
+### Correcciones de Subida de Foto de Perfil y Navegación
+1. **Subida de foto solo desde ajustes** - Removida completamente la funcionalidad de subir foto desde la vista principal de perfil (tanto móvil como desktop)
+2. **Función unificada handleEditProfileImageUpload** - Todas las subidas de foto ahora usan una única función que:
+   - Actualiza instantáneamente todas las vistas (móvil, desktop, modal de edición)
+   - Sube la imagen a Amazon S3 mediante Netlify functions
+   - Guarda la URL en Firebase Database para sincronización en tiempo real
+   - Actualiza automáticamente fotos en búsquedas, listados de autores y comentarios
+3. **Barra de navegación corregida** - Ahora se oculta correctamente cuando se abre el perfil o ajustes, y se restaura cuando se vuelve al home
+4. **Sincronización en tiempo real mejorada** - Las fotos de perfil se actualizan en:
+   - Vista de perfil móvil y desktop
+   - Modal de edición de perfil
+   - Resultados de búsqueda
+   - Listados de autores recomendados
+   - Comentarios y menciones
+5. **Notificación visual** - Mensaje de éxito con animación cuando se sube una foto correctamente
+
+### Funciones de Navegación Actualizadas
+- **openProfile()** - Oculta la barra de navegación superior (#top-navbar)
+- **openProfileEdit()** - Oculta la barra de navegación al abrir ajustes
+- **openHome()** - Restaura la barra de navegación superior
+- **handleEditProfileImageUpload()** - Función unificada para subida de fotos desde ajustes
+
+## Cambios Recientes (25 Oct 2025 - Mañana)
 
 ### Modo Claro Permanente
 1. **Eliminada funcionalidad de modo oscuro/claro** - La aplicación ahora permanece en modo claro todo el tiempo
