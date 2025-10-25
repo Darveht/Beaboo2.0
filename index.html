@@ -3514,12 +3514,53 @@ function saveNote() {
   });
 
   // Toggling de texto en botón de seguir
-  function followAuthor() {
+  async function followAuthor() {
+    const user = firebase.auth().currentUser;
+    if (!user) {
+      alert('Debes iniciar sesión para seguir a otros usuarios');
+      return;
+    }
+
     const btn = document.getElementById('follow-button');
     const text = document.getElementById('follow-button-text');
-    const isFollowing = text.textContent === 'Seguir';
-    text.textContent = isFollowing ? 'Dejar de seguir' : 'Seguir';
-    // Aquí iría lógica real de seguimiento.
+    const isFollowing = text.textContent === 'Dejar de seguir';
+    
+    try {
+      const response = await fetch('/.netlify/functions/manage-following', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: isFollowing ? 'unfollow' : 'follow',
+          userId: user.uid,
+          targetUserId: currentViewedAuthorId
+        })
+      });
+
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || 'Error al seguir/dejar de seguir');
+      }
+
+      text.textContent = isFollowing ? 'Seguir' : 'Dejar de seguir';
+      
+      // Actualizar contador de seguidores
+      const followersElement = document.getElementById('author-followers');
+      if (followersElement) {
+        const currentCount = parseInt(followersElement.textContent);
+        followersElement.textContent = isFollowing ? currentCount - 1 : currentCount + 1;
+      }
+
+      // Notificar al autor
+      if (!isFollowing) {
+        await addNotification(currentViewedAuthorId, `${user.displayName || 'Alguien'} comenzó a seguirte`, 'follow');
+      }
+    } catch (error) {
+      console.error('Error al seguir/dejar de seguir:', error);
+      alert('Error al seguir/dejar de seguir. Por favor intenta de nuevo.');
+    }
   }
 </script>
 
@@ -4816,61 +4857,117 @@ function openPhotoDetail(photo) {
     });
   }
 
-  // Función para cargar estadísticas del perfil en tiempo real
-  function loadUserStats(userId) {
-    // Contador de historias publicadas
-    firebase.database().ref('stories').orderByChild('userId').equalTo(userId).on('value', storiesSnapshot => {
-      const storiesCount = storiesSnapshot.numChildren();
+  // Función para cargar estadísticas del perfil desde AWS S3
+  async function loadUserStats(userId) {
+    try {
+      const response = await fetch(`/.netlify/functions/get-user-stats?userId=${userId}`);
+      const result = await response.json();
       
-      // Actualizar en móvil
+      if (!response.ok) {
+        throw new Error(result.error || 'Error al cargar estadísticas');
+      }
+
+      const stats = result.stats;
+      
+      // Actualizar contador de historias en móvil
       const profileStoriesTitle = document.getElementById('profile-stories-title');
       if (profileStoriesTitle) {
-        profileStoriesTitle.textContent = `${storiesCount} Historias`;
+        profileStoriesTitle.textContent = `${stats.storiesCount} Historias`;
       }
       
       // Actualizar en desktop
       const profileStoriesHeader = document.getElementById('profile-stories-header');
       const sidebarStoriesCount = document.getElementById('sidebar-stories-count');
       const profileStoriesCountDesktop = document.getElementById('profile-stories-count-desktop');
+      const sidebarTotalViews = document.getElementById('sidebar-total-views');
+      const sidebarFollowersCount = document.getElementById('sidebar-followers-count');
       
       if (profileStoriesHeader) {
-        profileStoriesHeader.textContent = `${storiesCount} Historias`;
+        profileStoriesHeader.textContent = `${stats.storiesCount} Historias`;
       }
       if (sidebarStoriesCount) {
-        sidebarStoriesCount.textContent = storiesCount;
+        sidebarStoriesCount.textContent = stats.storiesCount;
       }
       if (profileStoriesCountDesktop) {
-        profileStoriesCountDesktop.textContent = storiesCount;
+        profileStoriesCountDesktop.textContent = stats.storiesCount;
       }
-      
-      // Cargar las historias en el grid
-      loadUserStoriesGrid(userId, storiesSnapshot);
-    });
-
-    // Total de lecturas (vistas de todas las historias)
-    firebase.database().ref('stories').orderByChild('userId').equalTo(userId).on('value', storiesSnapshot => {
-      let totalViews = 0;
-      storiesSnapshot.forEach(storyChild => {
-        const story = storyChild.val();
-        totalViews += story.views || 0;
-      });
-      
-      const sidebarTotalViews = document.getElementById('sidebar-total-views');
       if (sidebarTotalViews) {
-        sidebarTotalViews.textContent = totalViews;
+        sidebarTotalViews.textContent = stats.totalViews;
       }
-    });
-
-    // Seguidores en tiempo real
-    firebase.database().ref('users/' + userId + '/followersCount').on('value', snapshot => {
-      const followersCount = snapshot.val() || 0;
-      
-      // Actualizar en desktop
-      const sidebarFollowersCount = document.getElementById('sidebar-followers-count');
       if (sidebarFollowersCount) {
-        sidebarFollowersCount.textContent = followersCount;
+        sidebarFollowersCount.textContent = stats.followersCount;
       }
-    });
+
+      // Actualizar seguidores y siguiendo en móvil
+      const profileFollowers = document.getElementById('profile-followers');
+      const profileFollowing = document.getElementById('profile-following');
+      
+      if (profileFollowers) {
+        profileFollowers.textContent = formatNumber(stats.followersCount);
+      }
+      if (profileFollowing) {
+        profileFollowing.textContent = formatNumber(stats.followingCount);
+      }
+
+      // Cargar las historias del usuario
+      loadUserStoriesFromS3(userId);
+    } catch (error) {
+      console.error('Error al cargar estadísticas:', error);
+    }
+  }
+
+  // Nueva función para cargar historias desde S3
+  async function loadUserStoriesFromS3(userId) {
+    try {
+      const response = await fetch(`/.netlify/functions/get-stories?userId=${userId}`);
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || 'Error al cargar historias');
+      }
+
+      const userStoriesDesktop = document.getElementById('user-stories-desktop');
+      const userStoriesMobile = document.getElementById('user-stories');
+      
+      if (userStoriesDesktop) userStoriesDesktop.innerHTML = '';
+      if (userStoriesMobile) userStoriesMobile.innerHTML = '';
+      
+      const stories = result.stories || [];
+
+      if (stories.length === 0) {
+        const noStoriesMessage = `
+          <div class="col-span-full text-center py-12">
+            <div class="text-gray-400 mb-4">
+              <svg class="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C20.832 18.477 19.246 18 17.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+              </svg>
+            </div>
+            <h3 class="text-lg font-medium text-gray-600 mb-2">No tienes historias aún</h3>
+            <p class="text-gray-500 mb-4">Crea tu primera historia para comenzar</p>
+            <button onclick="openStoryCreation()" class="bg-[#FE2C55] text-white px-6 py-2 rounded-lg hover:bg-red-600 transition-colors">
+              Crear primera historia
+            </button>
+          </div>
+        `;
+        
+        if (userStoriesDesktop) userStoriesDesktop.innerHTML = noStoriesMessage;
+        if (userStoriesMobile) userStoriesMobile.innerHTML = noStoriesMessage;
+        return;
+      }
+
+      stories.forEach(story => {
+        const storyCard = createStoryCard(story, userId);
+        
+        if (userStoriesDesktop) {
+          userStoriesDesktop.appendChild(storyCard.cloneNode(true));
+        }
+        if (userStoriesMobile) {
+          userStoriesMobile.appendChild(storyCard);
+        }
+      });
+    } catch (error) {
+      console.error('Error al cargar historias del usuario:', error);
+    }
   }
 
   // Función para cargar las historias del usuario en el grid
@@ -5854,15 +5951,27 @@ function saveNote() {
   });
   /*********************** NOTIFICACIONES **************************/
   async function addNotification(userId, message, type = 'info') {
-    const notificationsRef = firebase.database().ref('notifications/' + userId);
-    const newNotificationRef = notificationsRef.push();
-    newNotificationRef.set({
-      message: message,
-      timestamp: Date.now(),
-      read: false,
-      type: type,
-      notificationId: newNotificationRef.key
-    });
+    try {
+      const response = await fetch('/.netlify/functions/manage-notifications', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'add',
+          userId: userId,
+          notification: {
+            message: message,
+            type: type
+          }
+        })
+      });
+
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || 'Error al crear notificación');
+      }
     
     // Play sound based on notification type
     const audio = new Audio();
@@ -5935,55 +6044,75 @@ function saveNote() {
       }
       
       document.getElementById('notifications-modal').classList.remove('hidden');
-      const notificationsRef = firebase.database().ref('notifications/' + currentUser.uid);
-      notificationsRef.on('value', snapshot => {
-        const notificationsList = document.getElementById('notifications-list');
-        notificationsList.innerHTML = "";
-        snapshot.forEach(child => {
-          const notification = child.val();
-          const div = document.createElement('div');
-          div.className = `notification-item ${notification.type || 'info'}`;
-          
-          // Icon based on notification type
-          const iconMap = {
-            follow: 'user-plus',
-            like: 'heart',
-            comment: 'comment',
-            info: 'info-circle'
-          };
-          
-          div.innerHTML = `
-            <div class="flex items-center gap-2">
-              <i class="fas fa-${iconMap[notification.type || 'info']} ${notification.type}-icon"></i>
-              <div class="flex-1">
-                <div class="notification-message">${notification.message}</div>
-                <div class="notification-time">${new Date(notification.timestamp).toLocaleString()}</div>
-              </div>
-              ${!notification.read ? '<span class="unread-dot"></span>' : ''}
-            </div>
-          `;
-          
-          // Mark as read when clicked - compatible with touch devices
-          div.addEventListener('click', () => {
-            if (!notification.read) {
-              firebase.database().ref('notifications/' + currentUser.uid + '/' + child.key).update({
-                read: true
-              });
-            }
-          });
-          div.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            if (!notification.read) {
-              firebase.database().ref('notifications/' + currentUser.uid + '/' + child.key).update({
-                read: true
-              });
-            }
-          });
-          
-          notificationsList.appendChild(div);
-        });
+      
+      // Cargar notificaciones desde AWS S3
+      const response = await fetch(`/.netlify/functions/manage-notifications?userId=${currentUser.uid}`);
+      const result = await response.json();
+      
+      if (!response.ok) {
+        console.error('Error al cargar notificaciones:', result.error);
         hideLoader();
+        return;
+      }
+
+      const notificationsList = document.getElementById('notifications-list');
+      notificationsList.innerHTML = "";
+      
+      const notifications = result.notifications || [];
+      
+      notifications.forEach(notification => {
+        const div = document.createElement('div');
+        div.className = `notification-item ${notification.type || 'info'}`;
+        
+        // Icon based on notification type
+        const iconMap = {
+          follow: 'user-plus',
+          like: 'heart',
+          comment: 'comment',
+          info: 'info-circle'
+        };
+        
+        div.innerHTML = `
+          <div class="flex items-center gap-2">
+            <i class="fas fa-${iconMap[notification.type || 'info']} ${notification.type}-icon"></i>
+            <div class="flex-1">
+              <div class="notification-message">${notification.message}</div>
+              <div class="notification-time">${new Date(notification.timestamp).toLocaleString()}</div>
+            </div>
+            ${!notification.read ? '<span class="unread-dot"></span>' : ''}
+          </div>
+        `;
+        
+        // Mark as read when clicked
+        const markAsRead = async () => {
+          if (!notification.read) {
+            try {
+              await fetch('/.netlify/functions/manage-notifications', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  action: 'mark-read',
+                  userId: currentUser.uid,
+                  notificationId: notification.id
+                })
+              });
+            } catch (error) {
+              console.error('Error al marcar como leída:', error);
+            }
+          }
+        };
+        
+        div.addEventListener('click', markAsRead);
+        div.addEventListener('touchend', (e) => {
+          e.preventDefault();
+          markAsRead();
+        });
+        
+        notificationsList.appendChild(div);
       });
+      hideLoader();
     }, 100);
   }
 
