@@ -5731,6 +5731,37 @@ async function likeNote(noteId) {
 
 <!-- JAVASCRIPT -->
 <script>
+  /*********************** FUNCIONES DE NAVEGACIÓN **************************/
+  function openHome() {
+    document.getElementById('community-view').classList.add('hidden');
+    document.getElementById('search-view').classList.add('hidden');
+    document.getElementById('profile-view').classList.add('hidden');
+    document.getElementById('creator-hub-view').classList.add('hidden');
+    const mainApp = document.getElementById('main-app');
+    if (mainApp) mainApp.classList.remove('hidden');
+  }
+
+  function openSearch() {
+    const mainApp = document.getElementById('main-app');
+    if (mainApp) mainApp.classList.add('hidden');
+    document.getElementById('search-view').classList.remove('hidden');
+  }
+
+  function openProfile() {
+    const user = firebase.auth().currentUser;
+    if (!user) return;
+    const mainApp = document.getElementById('main-app');
+    if (mainApp) mainApp.classList.add('hidden');
+    document.getElementById('profile-view').classList.remove('hidden');
+    loadUserStats(user.uid);
+  }
+
+  function openNotifications() {
+    const topNav = document.getElementById('top-navbar');
+    if (topNav) topNav.style.display = 'none';
+    document.getElementById('notifications-modal').classList.remove('hidden');
+  }
+
   /*********************** CONFIGURACIÓN DE FIREBASE **************************/
   const firebaseConfig = {
     apiKey: "AIzaSyBWBr3sud1_lDPmtLJI42pCBZnco5_vyCc",
@@ -5780,37 +5811,10 @@ async function likeNote(noteId) {
   let currentChapterEditId = null;
   let currentLanguage = 'es';
 
-  // Funciones de navegación
-  function openHome() {
-    document.getElementById('community-view').classList.add('hidden');
-    document.getElementById('search-view').classList.add('hidden');
-    document.getElementById('profile-view').classList.add('hidden');
-    document.getElementById('creator-hub-view').classList.add('hidden');
-    mainApp.classList.remove('hidden');
-  }
-
-  function openSearch() {
-    mainApp.classList.add('hidden');
-    document.getElementById('search-view').classList.remove('hidden');
-  }
-
   function closeSearch() {
     document.getElementById('search-view').classList.add('hidden');
-    mainApp.classList.remove('hidden');
-  }
-
-  function openProfile() {
-    const user = firebase.auth().currentUser;
-    if (!user) return;
-    mainApp.classList.add('hidden');
-    document.getElementById('profile-view').classList.remove('hidden');
-    loadUserStats(user.uid);
-  }
-
-  function openNotifications() {
-    const topNav = document.getElementById('top-navbar');
-    if (topNav) topNav.style.display = 'none';
-    document.getElementById('notifications-modal').classList.remove('hidden');
+    const mainApp = document.getElementById('main-app');
+    if (mainApp) mainApp.classList.remove('hidden');
   }
 
   function closeNotifications() {
@@ -5820,7 +5824,6 @@ async function likeNote(noteId) {
   }
 
   function showLoader() {
-    // Implementación simple de loader
     console.log('Loading...');
   }
 
@@ -5897,12 +5900,25 @@ async function likeNote(noteId) {
   };
 
   function getVerificationIcon(email) {
-    // Si el correo es uno de los que deben estar verificados,
-    // se mostrará el icono nuevo.
     if (email === "darelvega6@icloud.com" || email === "glamworksappstv@gmail.com" || email === "linapaolaromero99@gmail.com") {
       return '<img src="https://static.vecteezy.com/system/resources/previews/028/084/106/original/verified-check-mark-icon-png.png" alt="Verificado" class="inline-block w-4 h-4 ml-1">';
     }
     return "";
+  }
+
+  window.resetPassword = function() {
+    const email = emailInput.value;
+    if (!email) {
+      alert("Please enter your email address to reset your password.");
+      return;
+    }
+    firebase.auth().sendPasswordResetEmail(email)
+      .then(() => {
+        alert("A password reset email has been sent.");
+      })
+      .catch(error => {
+        alert("Error sending email: " + error.message);
+      });
   }
 
   function updateTranslations() {
@@ -6004,6 +6020,9 @@ async function likeNote(noteId) {
       if (!response.ok) {
         throw new Error(result.error || 'Error al crear notificación');
       }
+    } catch (error) {
+      console.error('Error al crear notificación:', error);
+    }
     
     // Play sound based on notification type
     const audio = new Audio();
@@ -6371,21 +6390,7 @@ async function likeNote(noteId) {
         });
     }, 3000);
   }
-  /*********************** OLVIDÉ MI CONTRASEÑA **************************/
-  window.resetPassword = function() {
-    const email = emailInput.value;
-    if (!email) {
-      alert("Please enter your email address to reset your password.");
-      return;
-    }
-    firebase.auth().sendPasswordResetEmail(email)
-      .then(() => {
-        alert("A password reset email has been sent.");
-      })
-      .catch(error => {
-        alert("Error sending email: " + error.message);
-      });
-  }
+  
   /*********************** SOPORTE **************************/
   function openSupportModal() {
     const supportModal = document.getElementById('support-modal');
