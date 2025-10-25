@@ -1214,7 +1214,10 @@ setInterval(checkScheduledChapters, 60000);
         currentLanguage = savedLang;
         updateTranslations();
       } else {
-        document.getElementById("language-modal").style.display = "flex";
+        const languageModal = document.getElementById("language-modal");
+        if (languageModal) {
+          languageModal.style.display = "flex";
+        }
       }
     });
 
@@ -2436,13 +2439,19 @@ document.getElementById('note-content').addEventListener('input', function() {
   });
 
   // Simulación de apertura del micrófono
-  document.getElementById('voice-search-btn').addEventListener('click', () => {
-    document.getElementById('voice-animation-container').classList.remove('hidden');
-  });
+  const voiceSearchBtn = document.getElementById('voice-search-btn');
+  if (voiceSearchBtn) {
+    voiceSearchBtn.addEventListener('click', () => {
+      document.getElementById('voice-animation-container').classList.remove('hidden');
+    });
+  }
 
-  document.getElementById('cancel-voice').addEventListener('click', () => {
-    document.getElementById('voice-animation-container').classList.add('hidden');
-  });
+  const cancelVoiceBtn = document.getElementById('cancel-voice');
+  if (cancelVoiceBtn) {
+    cancelVoiceBtn.addEventListener('click', () => {
+      document.getElementById('voice-animation-container').classList.add('hidden');
+    });
+  }
 
   // Lógica de seguir autores (simulación)
   function toggleFollow(authorId) {
@@ -5548,18 +5557,26 @@ async function likeNote(noteId) {
       video.play();
     }
   }
-  document.getElementById('live-startBtn').addEventListener('click', function() {
-    document.getElementById('live-spinner').classList.remove('hidden');
-    this.classList.add('hidden');
-    setTimeout(function() {
-      document.getElementById('live-spinner').classList.add('hidden');
-      document.getElementById('live-endBtn').classList.remove('hidden');
-      document.getElementById('live-overlay').classList.add('hidden');
-    }, 2000);
-  });
-  document.getElementById('live-endBtn').addEventListener('click', function() {
-    closeLiveStreamModal();
-  });
+  const liveStartBtn = document.getElementById('live-startBtn');
+  if (liveStartBtn) {
+    liveStartBtn.addEventListener('click', function() {
+      document.getElementById('live-spinner').classList.remove('hidden');
+      this.classList.add('hidden');
+      setTimeout(function() {
+        document.getElementById('live-spinner').classList.add('hidden');
+        const liveEndBtn = document.getElementById('live-endBtn');
+        if (liveEndBtn) liveEndBtn.classList.remove('hidden');
+        document.getElementById('live-overlay').classList.add('hidden');
+      }, 2000);
+    });
+  }
+  
+  const liveEndBtn = document.getElementById('live-endBtn');
+  if (liveEndBtn) {
+    liveEndBtn.addEventListener('click', function() {
+      closeLiveStreamModal();
+    });
+  }
 
   function startCountdown() {
     let countdownElement = document.getElementById('live-countdown');
@@ -5985,96 +6002,101 @@ function saveNote() {
 
   function openNotifications() {
     showLoader();
-    setTimeout(() => {
+    setTimeout(async () => {
       const currentUser = firebase.auth().currentUser;
       if (!currentUser) {
         hideLoader();
         return;
       }
       
-      // Request notification permission if not granted (only on supported platforms)
-      if ('Notification' in window && Notification.permission !== "granted" && Notification.permission !== "denied") {
-        Notification.requestPermission().catch(err => {
-          console.log('Notification permission error:', err);
-        });
-      }
-      
-      // Ocultar la barra superior
-      const topNav = document.getElementById('top-navbar');
-      if (topNav) {
-        topNav.style.display = 'none';
-      }
-      
-      document.getElementById('notifications-modal').classList.remove('hidden');
-      
-      // Cargar notificaciones desde AWS S3
-      const response = await fetch(`/.netlify/functions/manage-notifications?userId=${currentUser.uid}`);
-      const result = await response.json();
-      
-      if (!response.ok) {
-        console.error('Error al cargar notificaciones:', result.error);
-        hideLoader();
-        return;
-      }
+      try {
+        // Request notification permission if not granted (only on supported platforms)
+        if ('Notification' in window && Notification.permission !== "granted" && Notification.permission !== "denied") {
+          Notification.requestPermission().catch(err => {
+            console.log('Notification permission error:', err);
+          });
+        }
+        
+        // Ocultar la barra superior
+        const topNav = document.getElementById('top-navbar');
+        if (topNav) {
+          topNav.style.display = 'none';
+        }
+        
+        document.getElementById('notifications-modal').classList.remove('hidden');
+        
+        // Cargar notificaciones desde AWS S3
+        const response = await fetch(`/.netlify/functions/manage-notifications?userId=${currentUser.uid}`);
+        const result = await response.json();
+        
+        if (!response.ok) {
+          console.error('Error al cargar notificaciones:', result.error);
+          hideLoader();
+          return;
+        }
 
-      const notificationsList = document.getElementById('notifications-list');
-      notificationsList.innerHTML = "";
-      
-      const notifications = result.notifications || [];
-      
-      notifications.forEach(notification => {
-        const div = document.createElement('div');
-        div.className = `notification-item ${notification.type || 'info'}`;
+        const notificationsList = document.getElementById('notifications-list');
+        notificationsList.innerHTML = "";
         
-        // Icon based on notification type
-        const iconMap = {
-          follow: 'user-plus',
-          like: 'heart',
-          comment: 'comment',
-          info: 'info-circle'
-        };
+        const notifications = result.notifications || [];
         
-        div.innerHTML = `
-          <div class="flex items-center gap-2">
-            <i class="fas fa-${iconMap[notification.type || 'info']} ${notification.type}-icon"></i>
-            <div class="flex-1">
-              <div class="notification-message">${notification.message}</div>
-              <div class="notification-time">${new Date(notification.timestamp).toLocaleString()}</div>
+        notifications.forEach(notification => {
+          const div = document.createElement('div');
+          div.className = `notification-item ${notification.type || 'info'}`;
+          
+          // Icon based on notification type
+          const iconMap = {
+            follow: 'user-plus',
+            like: 'heart',
+            comment: 'comment',
+            info: 'info-circle'
+          };
+          
+          div.innerHTML = `
+            <div class="flex items-center gap-2">
+              <i class="fas fa-${iconMap[notification.type || 'info']} ${notification.type}-icon"></i>
+              <div class="flex-1">
+                <div class="notification-message">${notification.message}</div>
+                <div class="notification-time">${new Date(notification.timestamp).toLocaleString()}</div>
+              </div>
+              ${!notification.read ? '<span class="unread-dot"></span>' : ''}
             </div>
-            ${!notification.read ? '<span class="unread-dot"></span>' : ''}
-          </div>
-        `;
-        
-        // Mark as read when clicked
-        const markAsRead = async () => {
-          if (!notification.read) {
-            try {
-              await fetch('/.netlify/functions/manage-notifications', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                  action: 'mark-read',
-                  userId: currentUser.uid,
-                  notificationId: notification.id
-                })
-              });
-            } catch (error) {
-              console.error('Error al marcar como leída:', error);
+          `;
+          
+          // Mark as read when clicked
+          const markAsRead = async () => {
+            if (!notification.read) {
+              try {
+                await fetch('/.netlify/functions/manage-notifications', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    action: 'mark-read',
+                    userId: currentUser.uid,
+                    notificationId: notification.id
+                  })
+                });
+              } catch (error) {
+                console.error('Error al marcar como leída:', error);
+              }
             }
-          }
-        };
-        
-        div.addEventListener('click', markAsRead);
-        div.addEventListener('touchend', (e) => {
-          e.preventDefault();
-          markAsRead();
+          };
+          
+          div.addEventListener('click', markAsRead);
+          div.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            markAsRead();
+          });
+          
+          notificationsList.appendChild(div);
         });
-        
-        notificationsList.appendChild(div);
-      });
-      hideLoader();
+        hideLoader();
+      } catch (error) {
+        console.error('Error loading notifications:', error);
+        hideLoader();
+      }
     }, 100);
   }
 
@@ -8627,14 +8649,20 @@ document.getElementById('category-filter').addEventListener('change', performRea
       }
     }, 1000);
   }
-  document.getElementById('live-startBtn').addEventListener('click', () => {
-    startLiveCountdown(10, () => {
-      document.getElementById('live-indicator').classList.remove('hidden');
-      document.getElementById('live-startBtn').classList.add('hidden');
-      document.getElementById('live-endBtn').classList.remove('hidden');
-      startBroadcasting();
+  const liveStartBtnMain = document.getElementById('live-startBtn');
+  if (liveStartBtnMain) {
+    liveStartBtnMain.addEventListener('click', () => {
+      startLiveCountdown(10, () => {
+        const liveIndicator = document.getElementById('live-indicator');
+        const liveStartBtn = document.getElementById('live-startBtn');
+        const liveEndBtn = document.getElementById('live-endBtn');
+        if (liveIndicator) liveIndicator.classList.remove('hidden');
+        if (liveStartBtn) liveStartBtn.classList.add('hidden');
+        if (liveEndBtn) liveEndBtn.classList.remove('hidden');
+        startBroadcasting();
+      });
     });
-  });
+  }
 
   function startBroadcasting() {
     livePeerConnection = new RTCPeerConnection();
@@ -8678,9 +8706,12 @@ document.getElementById('category-filter').addEventListener('change', performRea
       closeLiveStreamModal();
     }, 3000);
   }
-  document.getElementById('live-endBtn').addEventListener('click', () => {
-    endLiveStream();
-  });
+  const liveEndBtnMain = document.getElementById('live-endBtn');
+  if (liveEndBtnMain) {
+    liveEndBtnMain.addEventListener('click', () => {
+      endLiveStream();
+    });
+  }
 
   function openLiveViewModal(broadcasterId) {
     liveBroadcasterId = broadcasterId;
@@ -10679,11 +10710,13 @@ function closeBeabooStudio() {
       likeCountLive.textContent = likesLive;
     }
   }
-  heartButton.addEventListener('click', () => {
-    const rect = heartButton.getBoundingClientRect();
-    createHeart(rect.left + rect.width / 2, rect.top + rect.height / 2);
-    updateLikeCountLive();
-  });
+  if (heartButton) {
+    heartButton.addEventListener('click', () => {
+      const rect = heartButton.getBoundingClientRect();
+      createHeart(rect.left + rect.width / 2, rect.top + rect.height / 2);
+      updateLikeCountLive();
+    });
+  }
 </script>
 
 <!-- (El modal de compra de monedas ha sido removido) -->
