@@ -2597,18 +2597,10 @@ document.getElementById('note-content').addEventListener('input', function() {
         <!-- Marco animado seleccionado -->
         <div id="profile-frame" class="absolute inset-0 rounded-full pointer-events-none z-10" style="display: none;"></div>
         
-        <!-- Imagen de perfil -->
-        <label for="profile-image-input" class="relative cursor-pointer block">
-          <img id="profile-image" src="https://via.placeholder.com/150" class="w-24 h-24 rounded-full object-cover border-2 border-[#FE2C55] hover:border-red-600 transition-all relative z-0" alt="Foto de perfil">
-          <!-- Overlay de subir imagen -->
-          <div class="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 hover:opacity-100 rounded-full transition-opacity z-20">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1" />
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 12v-8" />
-              <path stroke-linecap="round" stroke-linejoin="round" d="M8 8l4-4 4 4" />
-            </svg>
-          </div>
-        </label>
+        <!-- Imagen de perfil (SOLO VISUALIZACIÓN) -->
+        <div class="relative block">
+          <img id="profile-image" src="https://via.placeholder.com/150" class="w-24 h-24 rounded-full object-cover border-2 border-[#FE2C55] relative z-0" alt="Foto de perfil">
+        </div>
         
         <!-- Botón para abrir selector de marcos -->
         <button onclick="openFrameSelector()" class="absolute -bottom-1 -right-1 bg-[#FE2C55] text-white rounded-full p-2 hover:bg-red-600 transition-all z-30">
@@ -2620,7 +2612,6 @@ document.getElementById('note-content').addEventListener('input', function() {
 
       <!-- Nombre de usuario debajo de la foto -->
       <h2 id="profile-username" class="text-xl font-semibold mb-4">@nombre_usuario</h2>
-      <input type="file" id="profile-image-input" accept="image/*" class="hidden" onchange="handleProfileImageUpload(event)">
 
       <!-- Estadísticas de seguidores y siguiendo -->
       <div class="flex space-x-8 mb-6">
@@ -2685,24 +2676,17 @@ document.getElementById('note-content').addEventListener('input', function() {
       <!-- Información de perfil centrada -->
       <div class="absolute bottom-0 left-0 right-0 p-8">
         <div class="flex items-end space-x-6">
-          <!-- Foto de perfil con marco -->
+          <!-- Foto de perfil con marco (SOLO VISUALIZACIÓN) -->
           <div class="relative">
             <div id="profile-frame-desktop" class="absolute inset-0 rounded-full pointer-events-none z-10" style="display: none;"></div>
-            <label for="profile-image-input-desktop" class="relative cursor-pointer block">
-              <img id="profile-image-desktop" src="https://via.placeholder.com/120" class="w-32 h-32 rounded-full object-cover border-4 border-white shadow-lg hover:scale-105 transition-transform relative z-0" alt="Foto de perfil">
-              <div class="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 hover:opacity-100 rounded-full transition-opacity z-20">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
-                </svg>
-              </div>
-            </label>
+            <div class="relative block">
+              <img id="profile-image-desktop" src="https://via.placeholder.com/120" class="w-32 h-32 rounded-full object-cover border-4 border-white shadow-lg relative z-0" alt="Foto de perfil">
+            </div>
             <button onclick="openFrameSelector()" class="absolute -bottom-2 -right-2 bg-[#FE2C55] text-white rounded-full p-2 hover:bg-red-600 transition-all z-30 shadow-lg">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
               </svg>
             </button>
-            <input type="file" id="profile-image-input-desktop" accept="image/*" class="hidden" onchange="handleProfileImageUploadDesktop(event)">
           </div>
 
           <!-- Información del usuario -->
@@ -2869,74 +2853,7 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 });
 
-async function handleProfileImageUploadDesktop(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  const user = firebase.auth().currentUser;
-  if (!user) return;
-
-  try {
-    const reader = new FileReader();
-    reader.onload = async function(e) {
-      const base64String = e.target.result;
-      const timestamp = Date.now();
-
-      // Mostrar preview inmediatamente
-      document.getElementById('profile-image-desktop').src = base64String;
-      document.getElementById('profile-image').src = base64String;
-
-      const response = await fetch('/.netlify/functions/upload-image', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          imageData: base64String,
-          fileName: file.name,
-          userId: user.uid,
-          timestamp: timestamp,
-          contentType: file.type,
-          imageType: 'profile'
-        })
-      });
-
-      const result = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(result.error || 'Error al subir imagen');
-      }
-
-      // Actualizar con la URL final de S3
-      document.getElementById('profile-image-desktop').src = result.imageUrl;
-      document.getElementById('profile-image').src = result.imageUrl;
-      const editProfileImageDesktop = document.getElementById('edit-profile-image-desktop');
-      if (editProfileImageDesktop) {
-        editProfileImageDesktop.src = result.imageUrl;
-      }
-      const editProfileImageMobile = document.getElementById('edit-profile-image-mobile');
-      if (editProfileImageMobile) {
-        editProfileImageMobile.src = result.imageUrl;
-      }
-      
-      // Guardar en Firebase Database
-      await firebase.database().ref('users/' + user.uid).update({
-        profileImage: result.imageUrl
-      });
-
-      alert('Foto de perfil actualizada correctamente');
-    };
-    
-    reader.onerror = (error) => {
-      console.error("Error al convertir la imagen a base64:", error);
-      alert('Error al procesar la imagen');
-    };
-    
-    reader.readAsDataURL(file);
-  } catch (error) {
-    console.error("Error al subir imagen de perfil:", error);
-    alert('Error al subir la imagen de perfil');
-  }
-}
+// FUNCIÓN REMOVIDA - La subida de foto solo está disponible en la sección de ajustes
 </script>
 
 <!-- CSS específico para overlay de subida -->
@@ -2946,71 +2863,7 @@ async function handleProfileImageUploadDesktop(event) {
   .scrollbar-hide { scrollbar-width: none; -ms-overflow-style: none; }
 </style>
 
-<!-- JS para previsualizar la imagen en tiempo real -->
-<script>
-  async function handleProfileImageUpload(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    const user = firebase.auth().currentUser;
-    if (!user) return;
-
-    try {
-      const reader = new FileReader();
-      reader.onload = async function(e) {
-        const base64String = e.target.result;
-        const timestamp = Date.now();
-
-        // Mostrar preview inmediatamente
-        document.getElementById('profile-image').src = base64String;
-
-        const response = await fetch('/.netlify/functions/upload-image', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            imageData: base64String,
-            fileName: file.name,
-            userId: user.uid,
-            timestamp: timestamp,
-            contentType: file.type,
-            imageType: 'profile'
-          })
-        });
-
-        const result = await response.json();
-        
-        if (!response.ok) {
-          throw new Error(result.error || 'Error al subir imagen');
-        }
-
-        // Actualizar la imagen en todos los lugares
-        document.getElementById('profile-image').src = result.imageUrl;
-        const profileImageDesktop = document.getElementById('profile-image-desktop');
-        if (profileImageDesktop) {
-          profileImageDesktop.src = result.imageUrl;
-        }
-        
-        // Guardar en Firebase Database
-        await firebase.database().ref('users/' + user.uid).update({
-          profileImage: result.imageUrl
-        });
-
-        alert('Foto de perfil actualizada correctamente');
-      };
-      
-      reader.onerror = (error) => {
-        console.error("Error al convertir la imagen a base64:", error);
-        alert('Error al procesar la imagen');
-      };
-      
-      reader.readAsDataURL(file);
-    } catch (error) {
-      console.error("Error al subir imagen de perfil:", error);
-      alert('Error al subir la imagen de perfil');
-    }
-  }
-</script>
+<!-- La subida de foto de perfil solo está disponible en la sección de ajustes -->
 
 
 <!-- MODAL DE EDICIÓN DE PERFIL -->
@@ -3343,7 +3196,7 @@ async function handleProfileImageUploadDesktop(event) {
                 <path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
               </svg>
             </button>
-            <input type="file" id="edit-profile-image-input-desktop" accept="image/*" class="hidden" onchange="handleEditProfileImageUploadDesktop(event)">
+            <input type="file" id="edit-profile-image-input-desktop" accept="image/*" class="hidden" onchange="handleEditProfileImageUpload(event)">
           </div>
           
           <!-- Panel de estadísticas para desktop -->
@@ -3392,21 +3245,31 @@ async function handleProfileImageUploadDesktop(event) {
   async function handleEditProfileImageUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
-    const user = firebase.auth().currentUser;
-    if (!user) return;
     
+    const user = firebase.auth().currentUser;
+    if (!user) {
+      alert('Debes iniciar sesión para subir una foto de perfil');
+      return;
+    }
+
     try {
       const reader = new FileReader();
       reader.onload = async function(e) {
         const base64String = e.target.result;
         const timestamp = Date.now();
 
-        // Mostrar preview inmediatamente
-        const editProfileImage = document.getElementById('edit-profile-image-mobile');
-        if (editProfileImage) {
-          editProfileImage.src = base64String;
-        }
+        // Mostrar preview inmediatamente en TODAS las vistas
+        const editProfileImageMobile = document.getElementById('edit-profile-image-mobile');
+        const editProfileImageDesktop = document.getElementById('edit-profile-image-desktop');
+        const profileImage = document.getElementById('profile-image');
+        const profileImageDesktop = document.getElementById('profile-image-desktop');
+        
+        if (editProfileImageMobile) editProfileImageMobile.src = base64String;
+        if (editProfileImageDesktop) editProfileImageDesktop.src = base64String;
+        if (profileImage) profileImage.src = base64String;
+        if (profileImageDesktop) profileImageDesktop.src = base64String;
 
+        // Subir a S3
         const response = await fetch('/.netlify/functions/upload-image', {
           method: 'POST',
           headers: {
@@ -3428,33 +3291,61 @@ async function handleProfileImageUploadDesktop(event) {
           throw new Error(result.error || 'Error al subir imagen');
         }
 
-        // Actualizar todas las instancias de la imagen
-        if (editProfileImage) {
-          editProfileImage.src = result.imageUrl;
-        }
-        document.getElementById('profile-image').src = result.imageUrl;
-        const profileImageDesktop = document.getElementById('profile-image-desktop');
-        if (profileImageDesktop) {
-          profileImageDesktop.src = result.imageUrl;
-        }
+        // Actualizar TODAS las imágenes de perfil con la URL final de S3
+        if (editProfileImageMobile) editProfileImageMobile.src = result.imageUrl;
+        if (editProfileImageDesktop) editProfileImageDesktop.src = result.imageUrl;
+        if (profileImage) profileImage.src = result.imageUrl;
+        if (profileImageDesktop) profileImageDesktop.src = result.imageUrl;
         
-        // Guardar en Firebase Database
+        // Guardar en Firebase Database para que se sincronice en tiempo real
         await firebase.database().ref('users/' + user.uid).update({
           profileImage: result.imageUrl
         });
 
-        alert('Foto de perfil actualizada correctamente');
+        // Actualizar todas las instancias de la imagen del usuario en la página
+        // Esto incluye búsquedas, listas de autores, comentarios, etc.
+        const allUserImages = document.querySelectorAll(`img[data-user-id="${user.uid}"]`);
+        allUserImages.forEach(img => {
+          img.src = result.imageUrl;
+        });
+        
+        // También actualizar cualquier imagen con src que contenga el userId
+        setTimeout(() => {
+          const searchResults = document.querySelectorAll('img[src*="placeholder"]');
+          searchResults.forEach(img => {
+            if (img.closest('[data-author-id="' + user.uid + '"]')) {
+              img.src = result.imageUrl;
+            }
+          });
+        }, 100);
+
+        // Mostrar notificación de éxito
+        const notification = document.createElement('div');
+        notification.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-[9999] flex items-center';
+        notification.innerHTML = `
+          <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+          </svg>
+          Foto de perfil actualizada correctamente
+        `;
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+          notification.style.opacity = '0';
+          notification.style.transition = 'opacity 0.3s ease-out';
+          setTimeout(() => notification.remove(), 300);
+        }, 3000);
       };
       
       reader.onerror = (error) => {
-        console.error("Error al convertir la imagen a base64:", error);
+        console.error("Error al leer la imagen:", error);
         alert('Error al procesar la imagen');
       };
       
       reader.readAsDataURL(file);
     } catch (error) {
       console.error("Error al subir imagen de perfil:", error);
-      alert('Error al subir la imagen de perfil');
+      alert('Error al subir la imagen de perfil: ' + error.message);
     }
   }
 </script>
@@ -5864,6 +5755,10 @@ async function likeNote(noteId) {
     document.getElementById('creator-hub-view').classList.add('hidden');
     const mainApp = document.getElementById('main-app');
     if (mainApp) mainApp.classList.remove('hidden');
+    
+    // Mostrar la barra de navegación superior cuando se vuelve al home
+    const topNav = document.getElementById('top-navbar');
+    if (topNav) topNav.style.display = 'flex';
   }
 
   function openSearch() {
@@ -5877,6 +5772,11 @@ async function likeNote(noteId) {
     if (!user) return;
     const mainApp = document.getElementById('main-app');
     if (mainApp) mainApp.classList.add('hidden');
+    
+    // Ocultar la barra de navegación superior cuando se abre el perfil
+    const topNav = document.getElementById('top-navbar');
+    if (topNav) topNav.style.display = 'none';
+    
     document.getElementById('profile-view').classList.remove('hidden');
     loadUserStats(user.uid);
   }
@@ -6773,6 +6673,11 @@ async function likeNote(noteId) {
     showLoader();
     setTimeout(() => {
       mainApp.classList.add('hidden');
+      
+      // Ocultar la barra de navegación superior cuando se abre el perfil
+      const topNav = document.getElementById('top-navbar');
+      if (topNav) topNav.style.display = 'none';
+      
       document.getElementById('profile-view').classList.remove('hidden');
       hideLoader();
     }, 300);
@@ -6783,6 +6688,11 @@ async function likeNote(noteId) {
     setTimeout(() => {
       document.getElementById('profile-view').classList.add('hidden');
       mainApp.classList.remove('hidden');
+      
+      // Mostrar la barra de navegación superior cuando se vuelve al home
+      const topNav = document.getElementById('top-navbar');
+      if (topNav) topNav.style.display = 'flex';
+      
       hideLoader();
     }, 300);
   }
@@ -6966,6 +6876,11 @@ document.getElementById('category-filter').addEventListener('change', performRea
   function openProfileEdit() {
     const user = firebase.auth().currentUser;
     if (!user) return;
+    
+    // Ocultar la barra de navegación superior cuando se abre la edición de perfil
+    const topNav = document.getElementById('top-navbar');
+    if (topNav) topNav.style.display = 'none';
+    
     firebase.database().ref('users/' + user.uid).once('value').then(snapshot => {
       const data = snapshot.val() || {};
       
@@ -7025,21 +6940,7 @@ document.getElementById('category-filter').addEventListener('change', performRea
     });
   }
 
-  function handleEditProfileImageUploadDesktop(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    
-    reader.onload = function(e) {
-      document.getElementById('edit-profile-image-desktop').src = e.target.result;
-      // También actualizar la imagen móvil
-      document.getElementById('edit-profile-image-mobile').src = e.target.result;
-    }
-    
-    if (file) {
-      reader.readAsDataURL(file);
-    }
-  }
+  // La funcionalidad de subida de foto usa handleEditProfileImageUpload (unificada)
 
   function loadUserNotes() {
     const user = firebase.auth().currentUser;
@@ -7082,6 +6983,9 @@ document.getElementById('category-filter').addEventListener('change', performRea
 
   function closeProfileEdit() {
     document.getElementById('profile-edit-modal').style.display = "none";
+    
+    // No necesitamos mostrar el navbar aquí porque el modal de edición se abre sobre el perfil
+    // que ya tiene el navbar oculto
   }
 
   function saveProfileEdits() {
@@ -7171,53 +7075,7 @@ document.getElementById('category-filter').addEventListener('change', performRea
     document.getElementById('edit-profile-image-input').click();
   }
 
-  async function handleEditProfileImageUpload(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    const user = firebase.auth().currentUser;
-    if (!user) return;
-
-    try {
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        const base64String = e.target.result;
-        const timestamp = Date.now();
-
-        const response = await fetch('/.netlify/functions/upload-image', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            imageData: base64String,
-            fileName: file.name,
-            userId: user.uid,
-            timestamp: timestamp,
-            contentType: file.type,
-            imageType: 'profile'
-          })
-        });
-        const editProfileImageMobile = document.getElementById('edit-profile-image-mobile');
-        if (editProfileImageMobile) {
-          editProfileImageMobile.src = result.imageUrl;
-        }
-        const editProfileImageDesktop = document.getElementById('edit-profile-image-desktop');
-        if (editProfileImageDesktop) {
-          editProfileImageDesktop.src = result.imageUrl;
-        }
-      };
-      
-      reader.onerror = (error) => {
-        console.error("Error al convertir la imagen a base64:", error);
-        alert('Error al procesar la imagen');
-      };
-      
-      reader.readAsDataURL(file);
-    } catch (error) {
-      console.error("Error al subir imagen de perfil (edición):", error);
-      alert('Error al subir la imagen de perfil');
-    }
-  }
+  // DUPLICADO REMOVIDO - La función handleEditProfileImageUpload ya está definida arriba en la línea 3245
 
   // Función para conectar con TikTok
   function connectTikTok() {
