@@ -1835,7 +1835,7 @@ setInterval(checkScheduledChapters, 60000);
   <!-- Google Translate (oculto) -->
   <div id="google_translate_element" style="display:none !important; visibility:hidden !important; position:absolute; left:-9999px;"></div>
   
-  <div id="auth-form" class="w-full h-screen flex flex-col justify-center p-6">
+  <div id="auth-form" class="w-full h-screen flex flex-col justify-center p-6" style="display: flex;">
     <!-- Centered title -->
     <h1 id="auth-title" class="text-4xl font-bold text-center mb-8 text-[#FE2C55]">Zenvio</h1>
     <!-- Form takes full available width -->
@@ -1883,7 +1883,7 @@ setInterval(checkScheduledChapters, 60000);
 </body>
 
 <!-- APLICACIÓN PRINCIPAL ESTILO TIKTOK (MODO CLARO) -->
-<div id="main-app" class="h-screen flex flex-col bg-white font-sans text-black">
+<div id="main-app" class="h-screen flex flex-col bg-white font-sans text-black" style="display: none;">
   <!-- TOP BAR WITH NAME + ICONS -->
   <div id="top-navbar" class="flex items-center justify-between px-4 py-3 border-b border-gray-200 sticky top-0 z-50 bg-white">
     <h1 id="app-name" class="text-2xl font-bold text-[#161823]">BeaBoo</h1>
@@ -6258,6 +6258,9 @@ async function likeNote(noteId) {
     setTimeout(applyUserLanguage, 1000);
     setTimeout(applyUserLanguage, 3000);
     
+    const authFormContainer = document.getElementById('auth-form');
+    const mainAppContainer = document.getElementById('main-app');
+    
     if (user) {
       if (authorizedEmails.includes(user.email)) {
         document.getElementById('live-transmit-btn').style.display = "block";
@@ -6283,8 +6286,8 @@ async function likeNote(noteId) {
           firebase.auth().signOut();
           return;
         }
-        authFormContainer.classList.add('hidden');
-        mainApp.classList.remove('hidden');
+        authFormContainer.style.display = 'none';
+        mainAppContainer.style.display = 'flex';
         loadStories();
         loadUserStories(user.uid);
         initializeFeedSections();
@@ -6326,8 +6329,8 @@ async function likeNote(noteId) {
         }
       });
     } else {
-      authFormContainer.classList.remove('hidden');
-      mainApp.classList.add('hidden');
+      authFormContainer.style.display = 'flex';
+      mainAppContainer.style.display = 'none';
     }
   });
   /*********************** AUTENTICACIÓN CON GOOGLE Y FACEBOOK **************************/
