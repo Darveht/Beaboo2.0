@@ -2881,6 +2881,10 @@ async function handleProfileImageUploadDesktop(event) {
       const base64String = e.target.result;
       const timestamp = Date.now();
 
+      // Mostrar preview inmediatamente
+      document.getElementById('profile-image-desktop').src = base64String;
+      document.getElementById('profile-image').src = base64String;
+
       const response = await fetch('/.netlify/functions/upload-image', {
         method: 'POST',
         headers: {
@@ -2902,12 +2906,24 @@ async function handleProfileImageUploadDesktop(event) {
         throw new Error(result.error || 'Error al subir imagen');
       }
 
+      // Actualizar con la URL final de S3
       document.getElementById('profile-image-desktop').src = result.imageUrl;
       document.getElementById('profile-image').src = result.imageUrl;
+      const editProfileImageDesktop = document.getElementById('edit-profile-image-desktop');
+      if (editProfileImageDesktop) {
+        editProfileImageDesktop.src = result.imageUrl;
+      }
+      const editProfileImageMobile = document.getElementById('edit-profile-image-mobile');
+      if (editProfileImageMobile) {
+        editProfileImageMobile.src = result.imageUrl;
+      }
       
+      // Guardar en Firebase Database
       await firebase.database().ref('users/' + user.uid).update({
         profileImage: result.imageUrl
       });
+
+      alert('Foto de perfil actualizada correctamente');
     };
     
     reader.onerror = (error) => {
@@ -2932,14 +2948,67 @@ async function handleProfileImageUploadDesktop(event) {
 
 <!-- JS para previsualizar la imagen en tiempo real -->
 <script>
-  function handleProfileImageUpload(event) {
+  async function handleProfileImageUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = e => {
-      document.getElementById('profile-image').src = e.target.result;
-    };
-    reader.readAsDataURL(file);
+    const user = firebase.auth().currentUser;
+    if (!user) return;
+
+    try {
+      const reader = new FileReader();
+      reader.onload = async function(e) {
+        const base64String = e.target.result;
+        const timestamp = Date.now();
+
+        // Mostrar preview inmediatamente
+        document.getElementById('profile-image').src = base64String;
+
+        const response = await fetch('/.netlify/functions/upload-image', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            imageData: base64String,
+            fileName: file.name,
+            userId: user.uid,
+            timestamp: timestamp,
+            contentType: file.type,
+            imageType: 'profile'
+          })
+        });
+
+        const result = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(result.error || 'Error al subir imagen');
+        }
+
+        // Actualizar la imagen en todos los lugares
+        document.getElementById('profile-image').src = result.imageUrl;
+        const profileImageDesktop = document.getElementById('profile-image-desktop');
+        if (profileImageDesktop) {
+          profileImageDesktop.src = result.imageUrl;
+        }
+        
+        // Guardar en Firebase Database
+        await firebase.database().ref('users/' + user.uid).update({
+          profileImage: result.imageUrl
+        });
+
+        alert('Foto de perfil actualizada correctamente');
+      };
+      
+      reader.onerror = (error) => {
+        console.error("Error al convertir la imagen a base64:", error);
+        alert('Error al procesar la imagen');
+      };
+      
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error("Error al subir imagen de perfil:", error);
+      alert('Error al subir la imagen de perfil');
+    }
   }
 </script>
 
@@ -3320,16 +3389,72 @@ async function handleProfileImageUploadDesktop(event) {
 </div>
 
 <script>
-  function handleEditProfileImageUpload(event) {
+  async function handleEditProfileImageUpload(event) {
     const file = event.target.files[0];
-    const reader = new FileReader();
+    if (!file) return;
+    const user = firebase.auth().currentUser;
+    if (!user) return;
     
-    reader.onload = function(e) {
-      document.getElementById('edit-profile-image').src = e.target.result;
-    }
-    
-    if (file) {
+    try {
+      const reader = new FileReader();
+      reader.onload = async function(e) {
+        const base64String = e.target.result;
+        const timestamp = Date.now();
+
+        // Mostrar preview inmediatamente
+        const editProfileImage = document.getElementById('edit-profile-image-mobile');
+        if (editProfileImage) {
+          editProfileImage.src = base64String;
+        }
+
+        const response = await fetch('/.netlify/functions/upload-image', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            imageData: base64String,
+            fileName: file.name,
+            userId: user.uid,
+            timestamp: timestamp,
+            contentType: file.type,
+            imageType: 'profile'
+          })
+        });
+
+        const result = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(result.error || 'Error al subir imagen');
+        }
+
+        // Actualizar todas las instancias de la imagen
+        if (editProfileImage) {
+          editProfileImage.src = result.imageUrl;
+        }
+        document.getElementById('profile-image').src = result.imageUrl;
+        const profileImageDesktop = document.getElementById('profile-image-desktop');
+        if (profileImageDesktop) {
+          profileImageDesktop.src = result.imageUrl;
+        }
+        
+        // Guardar en Firebase Database
+        await firebase.database().ref('users/' + user.uid).update({
+          profileImage: result.imageUrl
+        });
+
+        alert('Foto de perfil actualizada correctamente');
+      };
+      
+      reader.onerror = (error) => {
+        console.error("Error al convertir la imagen a base64:", error);
+        alert('Error al procesar la imagen');
+      };
+      
       reader.readAsDataURL(file);
+    } catch (error) {
+      console.error("Error al subir imagen de perfil:", error);
+      alert('Error al subir la imagen de perfil');
     }
   }
 </script>
