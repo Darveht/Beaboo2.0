@@ -4230,7 +4230,11 @@ function saveNote() {
 
 async function loadPhotos() {
   const photosFeed = document.getElementById('photos-feed');
+  if (!photosFeed) return;
+  
   const photosContainer = photosFeed.querySelector('.grid');
+  if (!photosContainer) return;
+  
   photosContainer.innerHTML = '';
 
   try {
@@ -5557,26 +5561,21 @@ async function likeNote(noteId) {
       video.play();
     }
   }
-  const liveStartBtn = document.getElementById('live-startBtn');
-  if (liveStartBtn) {
-    liveStartBtn.addEventListener('click', function() {
-      document.getElementById('live-spinner').classList.remove('hidden');
-      this.classList.add('hidden');
-      setTimeout(function() {
-        document.getElementById('live-spinner').classList.add('hidden');
-        const liveEndBtn = document.getElementById('live-endBtn');
-        if (liveEndBtn) liveEndBtn.classList.remove('hidden');
-        document.getElementById('live-overlay').classList.add('hidden');
-      }, 2000);
-    });
-  }
-  
-  const liveEndBtn = document.getElementById('live-endBtn');
-  if (liveEndBtn) {
-    liveEndBtn.addEventListener('click', function() {
-      closeLiveStreamModal();
-    });
-  }
+  // Los event listeners para live se agregarán solo cuando se abra el modal
+  window.addEventListener('load', function() {
+    const liveStartBtn = document.getElementById('live-startBtn');
+    if (liveStartBtn) {
+      liveStartBtn.addEventListener('click', function() {
+        const spinner = document.getElementById('live-spinner');
+        if (spinner) spinner.classList.remove('hidden');
+        this.classList.add('hidden');
+        setTimeout(function() {
+          if (spinner) spinner.classList.add('hidden');
+          document.getElementById('live-overlay').classList.add('hidden');
+        }, 2000);
+      });
+    }
+  });
 
   function startCountdown() {
     let countdownElement = document.getElementById('live-countdown');
@@ -5629,37 +5628,43 @@ async function likeNote(noteId) {
   // -------------------------------
   // Para vista del Transmisor: ocultar/mostrar todos los controles
   const transmitterModal = document.getElementById("live-stream-modal");
-  transmitterModal.addEventListener("touchstart", function(e) {
-    touchstartX = e.changedTouches[0].screenX;
+  if (transmitterModal) {
+    transmitterModal.addEventListener("touchstart", function(e) {
+      touchstartX = e.changedTouches[0].screenX;
+    }, false);
+  }
 
-function openNoteModal() {
-  document.getElementById('note-modal').classList.remove('hidden');
-}
+  window.openNoteModal = function() {
+    const modal = document.getElementById('note-modal');
+    if (modal) modal.classList.remove('hidden');
+  }
 
-function closeNoteModal() {
-  document.getElementById('note-modal').classList.add('hidden');
-  document.getElementById('note-input').value = '';
-}
+  window.closeNoteModal = function() {
+    const modal = document.getElementById('note-modal');
+    if (modal) modal.classList.add('hidden');
+    const input = document.getElementById('note-input');
+    if (input) input.value = '';
+  }
 
-function saveNote() {
-  const noteText = document.getElementById('note-input').value.trim();
-  const currentUser = firebase.auth().currentUser;
-  
-  if (!noteText || !currentUser) return;
-  
-  firebase.database().ref('profileNotes/' + currentUser.uid).set({
-    text: noteText,
-    timestamp: Date.now()
-  }).then(() => {
-    closeNoteModal();
-    const profileNote = document.getElementById('profile-note');
-    profileNote.classList.remove('hidden');
-    document.getElementById('note-text').textContent = noteText;
-    document.getElementById('note-time').textContent = 'Expira en 12 horas';
-  });
-}
-
-  }, false);
+  window.saveNote = function() {
+    const noteText = document.getElementById('note-input').value.trim();
+    const currentUser = firebase.auth().currentUser;
+    
+    if (!noteText || !currentUser) return;
+    
+    firebase.database().ref('profileNotes/' + currentUser.uid).set({
+      text: noteText,
+      timestamp: Date.now()
+    }).then(() => {
+      closeNoteModal();
+      const profileNote = document.getElementById('profile-note');
+      if (profileNote) profileNote.classList.remove('hidden');
+      const noteTextEl = document.getElementById('note-text');
+      if (noteTextEl) noteTextEl.textContent = noteText;
+      const noteTime = document.getElementById('note-time');
+      if (noteTime) noteTime.textContent = 'Expira en 12 horas';
+    });
+  }
   transmitterModal.addEventListener("touchend", function(e) {
     touchendX = e.changedTouches[0].screenX;
     handleTransmitterSwipe();
@@ -5774,6 +5779,54 @@ function saveNote() {
   let liveBroadcasterId = null;
   let currentChapterEditId = null;
   let currentLanguage = 'es';
+
+  // Funciones de navegación
+  function openHome() {
+    document.getElementById('community-view').classList.add('hidden');
+    document.getElementById('search-view').classList.add('hidden');
+    document.getElementById('profile-view').classList.add('hidden');
+    document.getElementById('creator-hub-view').classList.add('hidden');
+    mainApp.classList.remove('hidden');
+  }
+
+  function openSearch() {
+    mainApp.classList.add('hidden');
+    document.getElementById('search-view').classList.remove('hidden');
+  }
+
+  function closeSearch() {
+    document.getElementById('search-view').classList.add('hidden');
+    mainApp.classList.remove('hidden');
+  }
+
+  function openProfile() {
+    const user = firebase.auth().currentUser;
+    if (!user) return;
+    mainApp.classList.add('hidden');
+    document.getElementById('profile-view').classList.remove('hidden');
+    loadUserStats(user.uid);
+  }
+
+  function openNotifications() {
+    const topNav = document.getElementById('top-navbar');
+    if (topNav) topNav.style.display = 'none';
+    document.getElementById('notifications-modal').classList.remove('hidden');
+  }
+
+  function closeNotifications() {
+    document.getElementById('notifications-modal').classList.add('hidden');
+    const topNav = document.getElementById('top-navbar');
+    if (topNav) topNav.style.display = 'flex';
+  }
+
+  function showLoader() {
+    // Implementación simple de loader
+    console.log('Loading...');
+  }
+
+  function hideLoader() {
+    console.log('Loading complete');
+  }
   const translations = {
     es: {
       appName: "BeaBoo",
@@ -6316,7 +6369,7 @@ function saveNote() {
     }, 3000);
   }
   /*********************** OLVIDÉ MI CONTRASEÑA **************************/
-  function resetPassword() {
+  window.resetPassword = function() {
     const email = emailInput.value;
     if (!email) {
       alert("Please enter your email address to reset your password.");
