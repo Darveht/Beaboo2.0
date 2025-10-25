@@ -2497,6 +2497,67 @@ document.getElementById('note-content').addEventListener('input', function() {
 <style>
   /* Estilos TikTok */
   * {
+
+
+  async function handleNoteLike(noteId, likeButton) {
+    const user = firebase.auth().currentUser;
+    if (!user) {
+      alert('Debes iniciar sesión para dar like');
+      return;
+    }
+
+    // Verificar si ya dio like
+    if (likeButton.classList.contains('text-[#FE2C55]')) {
+      alert('Ya diste like a esta nota');
+      return;
+    }
+
+    const originalHTML = likeButton.innerHTML;
+    likeButton.disabled = true;
+    likeButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+    try {
+      const response = await fetch('/.netlify/functions/like-note', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          noteId: noteId,
+          userId: user.uid
+        })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        if (response.status === 429) {
+          alert(result.message || 'Has alcanzado el límite de likes por hoy');
+        } else {
+          throw new Error(result.error || 'Error al dar like');
+        }
+        likeButton.disabled = false;
+        likeButton.innerHTML = originalHTML;
+        return;
+      }
+
+      // Actualizar UI
+      likeButton.classList.add('text-[#FE2C55]');
+      const likesCount = likeButton.querySelector('.likes-count');
+      if (likesCount) {
+        likesCount.textContent = result.likes;
+      }
+      likeButton.disabled = false;
+      likeButton.innerHTML = `<i class="fas fa-heart"></i> <span class="likes-count">${result.likes}</span>`;
+      
+    } catch (error) {
+      console.error('Error al dar like:', error);
+      alert('Error al dar like. Por favor intenta de nuevo.');
+      likeButton.disabled = false;
+      likeButton.innerHTML = originalHTML;
+    }
+  }
+
     margin: 0;
     padding: 0;
     box-sizing: border-box;
@@ -5184,6 +5245,27 @@ function openPhotoDetail(photo) {
     publishButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Publicando...';
 
     try {
+      // Primero verificar límites
+      const limitsCheck = await fetch('/.netlify/functions/check-user-limits', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: user.uid,
+          action: 'note'
+        })
+      });
+
+      const limitsResult = await limitsCheck.json();
+      
+      if (!limitsResult.canPerformAction) {
+        publishButton.disabled = false;
+        publishButton.innerHTML = 'Publicar';
+        alert(limitsResult.message);
+        return;
+      }
+
       const snapshot = await firebase.database().ref('users/' + user.uid).once('value');
       const userData = snapshot.val();
       
@@ -5226,7 +5308,14 @@ function openPhotoDetail(photo) {
       const result = await response.json();
       
       if (!response.ok) {
-        throw new Error(result.error || 'Error al publicar nota');
+        if (response.status === 429) {
+          alert(result.message || 'Has alcanzado el límite de publicaciones');
+        } else {
+          throw new Error(result.error || 'Error al publicar nota');
+        }
+        publishButton.disabled = false;
+        publishButton.innerHTML = 'Publicar';
+        return;
       }
 
       document.getElementById('note-content').value = '';

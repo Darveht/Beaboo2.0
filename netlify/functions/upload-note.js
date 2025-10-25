@@ -27,6 +27,31 @@ exports.handler = async (event) => {
       };
     }
 
+    // Verificar límites de publicación
+    const limitsCheck = await fetch(`${event.headers.origin || 'https://' + event.headers.host}/.netlify/functions/check-user-limits`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        userId: userId,
+        action: 'note'
+      })
+    });
+
+    const limitsResult = await limitsCheck.json();
+    
+    if (!limitsResult.canPerformAction) {
+      return {
+        statusCode: 429,
+        body: JSON.stringify({ 
+          error: 'Límite de publicación alcanzado',
+          message: limitsResult.message,
+          timeRemaining: limitsResult.timeRemaining
+        }),
+      };
+    }
+
     const noteId = `note_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const timestamp = Date.now();
     

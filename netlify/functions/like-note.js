@@ -36,6 +36,32 @@ exports.handler = async (event) => {
       };
     }
 
+    // Verificar límites de likes
+    const limitsCheck = await fetch(`${event.headers.origin || 'https://' + event.headers.host}/.netlify/functions/check-user-limits`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        userId: userId,
+        action: 'like'
+      })
+    });
+
+    const limitsResult = await limitsCheck.json();
+    
+    if (!limitsResult.canPerformAction) {
+      return {
+        statusCode: 429,
+        body: JSON.stringify({ 
+          error: 'Límite de likes alcanzado',
+          message: limitsResult.message,
+          timeRemaining: limitsResult.timeRemaining,
+          likesRemaining: limitsResult.limitsData.likesRemaining
+        }),
+      };
+    }
+
     const noteKey = `notes/metadata/${noteId}.json`;
     const likesKey = `notes/likes/${noteId}/${userId}`;
 
