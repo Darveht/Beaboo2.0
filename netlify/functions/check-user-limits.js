@@ -65,34 +65,47 @@ exports.handler = async (event) => {
     let timeRemaining = 0;
 
     if (action === 'note') {
-      // Verificar si han pasado 2 días desde la última nota
-      const timeSinceLastNote = now - limitsData.lastNoteTimestamp;
-      
-      if (timeSinceLastNote >= TWO_DAYS_MS) {
+      // Si nunca ha publicado (timestamp = 0), permitir la primera publicación
+      if (limitsData.lastNoteTimestamp === 0) {
         canPerformAction = true;
         limitsData.lastNoteTimestamp = now;
       } else {
-        timeRemaining = TWO_DAYS_MS - timeSinceLastNote;
-        const hoursRemaining = Math.ceil(timeRemaining / (60 * 60 * 1000));
-        message = `Debes esperar ${hoursRemaining} horas antes de publicar otra nota`;
+        // Verificar si han pasado 2 días desde la última nota
+        const timeSinceLastNote = now - limitsData.lastNoteTimestamp;
+        
+        if (timeSinceLastNote >= TWO_DAYS_MS) {
+          canPerformAction = true;
+          limitsData.lastNoteTimestamp = now;
+        } else {
+          timeRemaining = TWO_DAYS_MS - timeSinceLastNote;
+          const hoursRemaining = Math.ceil(timeRemaining / (60 * 60 * 1000));
+          message = `Debes esperar ${hoursRemaining} horas antes de publicar otra nota`;
+        }
       }
     } else if (action === 'like') {
-      // Verificar si han pasado 2 días desde el último reset de likes
-      const timeSinceLastReset = now - limitsData.lastLikesReset;
-      
-      if (timeSinceLastReset >= TWO_DAYS_MS) {
-        // Resetear el contador de likes
+      // Si nunca ha dado likes (lastLikesReset = 0), iniciar el contador
+      if (limitsData.lastLikesReset === 0) {
         limitsData.lastLikesReset = now;
         limitsData.likesCount = 1;
         canPerformAction = true;
-      } else if (limitsData.likesCount < 3) {
-        // Aún puede dar likes
-        limitsData.likesCount += 1;
-        canPerformAction = true;
       } else {
-        timeRemaining = TWO_DAYS_MS - timeSinceLastReset;
-        const hoursRemaining = Math.ceil(timeRemaining / (60 * 60 * 1000));
-        message = `Has alcanzado el límite de 3 likes. Debes esperar ${hoursRemaining} horas para dar más likes`;
+        // Verificar si han pasado 2 días desde el último reset de likes
+        const timeSinceLastReset = now - limitsData.lastLikesReset;
+        
+        if (timeSinceLastReset >= TWO_DAYS_MS) {
+          // Resetear el contador de likes
+          limitsData.lastLikesReset = now;
+          limitsData.likesCount = 1;
+          canPerformAction = true;
+        } else if (limitsData.likesCount < 3) {
+          // Aún puede dar likes
+          limitsData.likesCount += 1;
+          canPerformAction = true;
+        } else {
+          timeRemaining = TWO_DAYS_MS - timeSinceLastReset;
+          const hoursRemaining = Math.ceil(timeRemaining / (60 * 60 * 1000));
+          message = `Has alcanzado el límite de 3 likes. Debes esperar ${hoursRemaining} horas para dar más likes`;
+        }
       }
     }
 
